@@ -1,16 +1,10 @@
 <?php
 session_start();
-
 if (!isset($_SESSION['usuario_id'])) {
     header("Location: login.php");
     exit;
 }
 
-// Apenas admin pode acessar
-if ($_SESSION['usuario_perfil'] !== 'admin') {
-    echo "Acesso negado. Você não tem permissão para acessar esta página.";
-    exit;
-}
 
 require_once 'conexao.php';
 $bd = new BancoDeDados();
