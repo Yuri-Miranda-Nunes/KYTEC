@@ -1,9 +1,9 @@
 <?php
 class BancoDeDados {
-    private $host = 'localhost';
-    private $dbname = 'estoque_molduras';
-    private $usuario = 'root';
-    private $senha = '';
+    private $host = 'sql200.infinityfree.com';
+    private $dbname = 'if0_39533103_euro_banco';
+    private $usuario = 'if0_39533103';
+    private $senha = '7uZMTnbzCohtJq';
     public $pdo;
 
     public function __construct() {
