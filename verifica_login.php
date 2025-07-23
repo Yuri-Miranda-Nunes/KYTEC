@@ -32,7 +32,6 @@ if ($usuario && password_verify($senha, $usuario['senha'])) {
     $_SESSION['id_usuario'] = $usuario['id'];
     $_SESSION['nome']       = $usuario['nome'];
     $_SESSION['email']      = $usuario['email'];
-    $_SESSION['perfil']     = $usuario['perfil'] ?? 'comum';
 
     header('Location: dashboard.php');
     exit;
