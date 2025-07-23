@@ -2,6 +2,10 @@
 session_start();
 require_once 'conexao.php';
 
+header('Access-Control-Allow-Origin: https://kytec.rf.gd');
+header('Content-Type: application/json; charset=utf-8');
+// resto do seu código...
+
 // Ajuste o display de erros apenas enquanto estiver em desenvolvimento
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
