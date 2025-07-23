@@ -1,10 +1,10 @@
 <?php
 session_start();
-if (!isset($_SESSION['usuario_id'])) {
-    header("Location: login.php");
+
+if (!in_array('listar_produtos', $_SESSION['permissoes'])) {
+    echo "Acesso negado.";
     exit;
 }
-
 
 require_once 'conexao.php';
 $bd = new BancoDeDados();
