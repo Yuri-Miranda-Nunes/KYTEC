@@ -1,39 +1,28 @@
+
 <?php
 require_once 'conexao.php';
-
-$permissoes_possiveis = [
-  'listar_produtos',
-  'cadastrar_produtos',
-  'editar_produtos',
-  'excluir_produtos',
-  'gerenciar_usuarios'
-];
-
-$mensagem = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome = $_POST['nome'];
     $email = $_POST['email'];
-    $senha = password_hash($_POST['senha'], PASSWORD_DEFAULT);
-    $permissoes = $_POST['permissoes'] ?? [];
+    $senha = $_POST['senha'];
+    $permissao = $_POST['permissao'];
 
-    // Inserir o usuário
-    $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)");
-    if ($stmt->execute([$nome, $email, $senha])) {
-        $usuario_id = $pdo->lastInsertId();
+    // Criptografar senha
+    $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
 
-        // Inserir permissões
-        $stmtPermissao = $pdo->prepare("INSERT INTO permissoes (usuario_id, nome_permissao) VALUES (?, ?)");
-        foreach ($permissoes as $permissao) {
-            $stmtPermissao->execute([$usuario_id, $permissao]);
-        }
+    try {
+        $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha, permissao) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$nome, $email, $senha_hash, $permissao]);
 
-        $mensagem = "✅ Usuário cadastrado com sucesso!";
-    } else {
-        $mensagem = "❌ Erro ao cadastrar usuário.";
+        header("Location: listar_usuarios.php?success=1");
+        exit;
+    } catch (PDOException $e) {
+        echo "Erro ao cadastrar usuário: " . $e->getMessage();
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-br">
