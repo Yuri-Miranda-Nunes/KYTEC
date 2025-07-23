@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'] ?? '';
     $senha = $_POST['senha'] ?? '';
 
-    $sql = "SELECT * FROM usuarios WHERE email = ? AND ativo = 1 LIMIT 1";
+    $sql = "SELECT * FROM usuarios WHERE email = ? LIMIT 1";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$email]);
 
