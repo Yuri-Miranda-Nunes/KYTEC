@@ -20,6 +20,9 @@ try {
     // Conecta ao banco
     $pdo = (new BancoDeDados())->pdo;
     
+    // Força UTF-8 na conexão para compatibilidade
+    $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+    
     // Captura e limpa os dados do formulário
     $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
     $senha = $_POST['senha'] ?? '';
@@ -37,18 +40,29 @@ try {
         exit;
     }
     
-    // Busca o usuário
-    $sql = 'SELECT id, nome, email, senha FROM usuarios WHERE email = ? LIMIT 1';
+    // Busca o usuário - usando os nomes corretos das colunas
+    $sql = 'SELECT id, nome, email, senha, perfil, ativo FROM usuarios WHERE email = ? AND ativo = 1 LIMIT 1';
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$email]);
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // Debug temporário - REMOVA depois de resolver
+    // DEBUG TEMPORÁRIO - DESCOMENTE PARA TESTAR
     /*
-    echo "Email: " . $email . "<br>";
+    echo "Email digitado: '$email'<br>";
+    echo "Senha digitada: '$senha'<br>";
     echo "Usuario encontrado: " . ($usuario ? 'SIM' : 'NAO') . "<br>";
     if ($usuario) {
+        echo "Email no banco: '" . $usuario['email'] . "'<br>";
+        echo "Hash no banco: '" . $usuario['senha'] . "'<br>";
+        echo "Usuario ativo: " . ($usuario['ativo'] ? 'SIM' : 'NAO') . "<br>";
         echo "Password verify: " . (password_verify($senha, $usuario['senha']) ? 'OK' : 'FALHOU') . "<br>";
+        
+        // Testa senhas comuns
+        $senhas_teste = ['admin', '123456', 'password', 'admin123'];
+        echo "<br>Testando senhas comuns:<br>";
+        foreach($senhas_teste as $teste) {
+            echo "- '$teste': " . (password_verify($teste, $usuario['senha']) ? 'MATCH!' : 'não') . "<br>";
+        }
     }
     exit;
     */
@@ -58,10 +72,11 @@ try {
         // Login bem-sucedido: regenera ID da sessão por segurança
         session_regenerate_id(true);
         
-        // Salva na sessão
+        // Salva na sessão (usando os nomes das colunas do seu banco)
         $_SESSION['id_usuario'] = $usuario['id'];
         $_SESSION['nome'] = $usuario['nome'];
         $_SESSION['email'] = $usuario['email'];
+        $_SESSION['perfil'] = $usuario['perfil'];
         $_SESSION['logado'] = true;
         
         // Limpa mensagens de erro
@@ -76,11 +91,18 @@ try {
     header('Location: login.php');
     exit;
     
-} catch (Exception $e) {
-    // Log do erro (em produção, salve em arquivo de log)
-    error_log("Erro no login: " . $e->getMessage());
+} catch (PDOException $e) {
+    // Erro de banco de dados
+    error_log("Erro de banco no login: " . $e->getMessage());
+    $_SESSION['erro'] = 'Erro de conexão com o banco. Tente novamente.';
+    header('Location: login.php');
+    exit;
     
+} catch (Exception $e) {
+    // Outros erros
+    error_log("Erro no login: " . $e->getMessage());
     $_SESSION['erro'] = 'Erro interno. Tente novamente.';
     header('Location: login.php');
     exit;
 }
+?>
