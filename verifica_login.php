@@ -1,11 +1,6 @@
 <?php
 session_start();
 require_once 'conexao.php';
-// No seu arquivo conexao.php, a conexão deve ser assim:
-$pdo = new PDO($dsn, $username, $password, [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
-]);
 
 header('Access-Control-Allow-Origin: https://kytec.rf.gd');
 header('Content-Type: text/html; charset=utf-8');
