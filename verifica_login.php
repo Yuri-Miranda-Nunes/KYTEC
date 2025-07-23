@@ -1,6 +1,9 @@
 <?php
 session_start();
+// Sempre que precisar de conexão:
 require_once 'conexao.php';
+$pdo = (new BancoDeDados())->pdo;
+
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
