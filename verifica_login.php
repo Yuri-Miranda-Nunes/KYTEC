@@ -6,40 +6,34 @@ require_once 'conexao.php';
 $bd  = new BancoDeDados();
 $pdo = $bd->pdo;
 
-ini_set('display_errors', 1);
-
-ini_set('display_startup_errors', 1);
-
-error_reporting(E_ALL);
-
- 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    // Ajuste aqui se seus campos HTML tiverem outros nomes
-    $email = $_POST['email'] ?? '';
-    $senha = $_POST['senha'] ?? '';
-
-    // Consulta na tabela usuarios
-    $sql  = "SELECT * FROM usuarios WHERE email = ? LIMIT 1";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$email]);
-    $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($usuario && password_verify($senha, $usuario['senha'])) {
-        // Grava na sessão usando as colunas existentes
-        $_SESSION['id_usuario']   = $usuario['id']; 
-        $_SESSION['email']        = $usuario['email'];
-        $_SESSION['perfil']       = $usuario['perfil'] ?? 'usuario';
-        // Se você tiver um campo 'nome' em 'usuarios', use-o:
-        $_SESSION['nome']         = $usuario['nome']  ?? $usuario['email'];
-
-        header("Location: dashboard.php");
-        exit;
-    } else {
-        $_SESSION['erro'] = "E‑mail ou senha inválidos!";
-        header("Location: login.php");
-        exit;
-    }
-} else {
-    header("Location: login.php");
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: login.php');
     exit;
 }
+
+// Captura e saneia os inputs
+$email = trim($_POST['email']   ?? '');
+$senha = $_POST['senha']       ?? '';
+
+// Busca o usuário pelo e‑mail
+$sql  = 'SELECT * FROM usuarios WHERE email = ? LIMIT 1';
+$stmt = $pdo->prepare($sql);
+$stmt->execute([$email]);
+$usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if ($usuario && password_verify($senha, $usuario['senha'])) {
+    // Autenticação bem‑sucedida: grava na sessão
+    $_SESSION['id_usuario'] = $usuario['id'];
+    $_SESSION['nome']       = $usuario['nome'];
+    $_SESSION['email']      = $usuario['email'];
+    // Se tiver coluna perfil, ajuste aqui; caso não, comente a linha abaixo
+    // $_SESSION['perfil']     = $usuario['perfil'];
+
+    header('Location: dashboard.php');
+    exit;
+}
+
+// Falha na autenticação
+$_SESSION['erro'] = 'E‑mail ou senha inválidos!';
+header('Location: login.php');
+exit;
