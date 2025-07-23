@@ -1,9 +1,8 @@
 <?php
 require_once 'conexao.php';
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+$bd = new BancoDeDados();  // <-- AQUI É O PULO DO GATO
+$pdo = $bd->pdo;
 
 $permissoes_possiveis = [
   'listar_produtos',
@@ -22,15 +21,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $permissoes = $_POST['permissoes'] ?? [];
 
     try {
+        // Inserir o usuário
         $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)");
         if ($stmt->execute([$nome, $email, $senha])) {
             $usuario_id = $pdo->lastInsertId();
-    
+
+            // Inserir permissões
             $stmtPermissao = $pdo->prepare("INSERT INTO permissoes (usuario_id, nome_permissao) VALUES (?, ?)");
             foreach ($permissoes as $permissao) {
                 $stmtPermissao->execute([$usuario_id, $permissao]);
             }
-    
+
             $mensagem = "✅ Usuário cadastrado com sucesso!";
         } else {
             $mensagem = "❌ Erro ao cadastrar usuário.";
@@ -38,9 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (PDOException $e) {
         $mensagem = "❌ Erro: " . $e->getMessage();
     }
-    
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-br">
