@@ -51,8 +51,7 @@ try {
     $stmt->execute([$email]);
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    // DEBUG TEMPORÁRIO - DESCOMENTE PARA TESTAR
-    /*
+    
     echo "Email digitado: '$email'<br>";
     echo "Senha digitada: '$senha'<br>";
     echo "Usuario encontrado: " . ($usuario ? 'SIM' : 'NAO') . "<br>";
@@ -70,7 +69,7 @@ try {
         }
     }
     exit;
-    */
+
     
     // Verifica se existe e se a senha bate
     if ($usuario && password_verify($senha, $usuario['senha'])) {
