@@ -22,24 +22,9 @@ session_start();
   <?php endif; ?>
 
   <form action="verifica_login.php" method="post">
--  <input type="email" name="email" placeholder="E‑mail" required>
--  <input type="password" name="senha" placeholder="Senha" required>
-+  <input 
-+    type="email" 
-+    name="email" 
-+    placeholder="E‑mail" 
-+    required 
-+    autocomplete="email"       <!-- adicionado -->
-+  >
-+  <input 
-+    type="password" 
-+    name="senha" 
-+    placeholder="Senha" 
-+    required 
-+    autocomplete="current-password"  <!-- adiciondo -->
-+  >
-  <button type="submit">Entrar</button>
-</form>
-
+    <input type="email" name="email" placeholder="E‑mail" required>
+    <input type="password" name="senha" placeholder="Senha" required>
+    <button type="submit">Entrar</button>
+  </form>
 </body>
 </html>
