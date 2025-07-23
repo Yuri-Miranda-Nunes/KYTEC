@@ -1,54 +1,82 @@
 <?php
 require_once 'conexao.php';
-session_start();
 
-if (!isset($_SESSION['usuario_id'])) {
-    header("Location: login.php");
-    exit;
-}
+$permissoes_possiveis = [
+  'listar_produtos',
+  'cadastrar_produtos',
+  'editar_produtos',
+  'excluir_produtos',
+  'gerenciar_usuarios'
+];
 
-// Apenas admin pode acessar
-if ($_SESSION['usuario_perfil'] !== 'admin') {
-    echo "Acesso negado. Você não tem permissão para acessar esta página.";
-    exit;
-}
+$mensagem = '';
 
-// Se o formulário foi enviado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = $_POST['nome'] ?? '';
-    $email = $_POST['email'] ?? '';
-    $senha = $_POST['senha'] ?? '';
-    $perfil = $_POST['perfil'] ?? 'estoquista';
+    $nome = $_POST['nome'];
+    $email = $_POST['email'];
+    $senha = password_hash($_POST['senha'], PASSWORD_DEFAULT);
+    $permissoes = $_POST['permissoes'] ?? [];
 
-    if (!empty($nome) && !empty($email) && !empty($senha)) {
-        $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
+    // Inserir o usuário
+    $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)");
+    if ($stmt->execute([$nome, $email, $senha])) {
+        $usuario_id = $pdo->lastInsertId();
 
-        try {
-            $bd = new BancoDeDados();
-            $sql = "INSERT INTO usuarios (nome, email, senha, perfil, ativo)
-                    VALUES (?, ?, ?, ?, 1)";
-            $stmt = $bd->pdo->prepare($sql);
-            $stmt->execute([$nome, $email, $senha_hash, $perfil]);
-
-            echo "<p style='color:green;'>Usuário cadastrado com sucesso!</p>";
-        } catch (PDOException $e) {
-            echo "<p style='color:red;'>Erro: " . $e->getMessage() . "</p>";
+        // Inserir permissões
+        $stmtPermissao = $pdo->prepare("INSERT INTO permissoes (usuario_id, nome_permissao) VALUES (?, ?)");
+        foreach ($permissoes as $permissao) {
+            $stmtPermissao->execute([$usuario_id, $permissao]);
         }
+
+        $mensagem = "✅ Usuário cadastrado com sucesso!";
     } else {
-        echo "<p style='color:red;'>Preencha todos os campos.</p>";
+        $mensagem = "❌ Erro ao cadastrar usuário.";
     }
 }
 ?>
 
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Cadastrar Usuário</title>
+  <style>
+    body { font-family: Arial; max-width: 500px; margin: auto; }
+    label { display: block; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
 <h2>Cadastrar Novo Usuário</h2>
-<form method="POST">
-  <input type="text" name="nome" placeholder="Nome completo" required><br>
-  <input type="email" name="email" placeholder="E-mail" required><br>
-  <input type="password" name="senha" placeholder="Senha" required><br>
-  <select name="perfil">
-    <option value="admin">Admin</option>
-    <option value="estoquista">Estoquista</option>
-    <option value="vendedor">Vendedor</option>
-  </select><br><br>
-  <button type="submit">Cadastrar Usuário</button>
+<?php if ($mensagem): ?>
+  <p><strong><?= $mensagem ?></strong></p>
+<?php endif; ?>
+
+<form method="post">
+  <label>Nome:
+    <input type="text" name="nome" required>
+  </label>
+
+  <label>Email:
+    <input type="email" name="email" required>
+  </label>
+
+  <label>Senha:
+    <input type="password" name="senha" required>
+  </label>
+
+  <fieldset>
+    <legend>Permissões</legend>
+    <?php foreach ($permissoes_possiveis as $permissao): ?>
+      <label>
+        <input type="checkbox" name="permissoes[]" value="<?= $permissao ?>">
+        <?= ucfirst(str_replace('_', ' ', $permissao)) ?>
+      </label>
+    <?php endforeach; ?>
+  </fieldset>
+
+  <button type="submit">Cadastrar</button>
 </form>
+
+</body>
+</html>
