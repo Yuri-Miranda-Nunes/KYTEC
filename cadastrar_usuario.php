@@ -46,14 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Inserir o usuário
                 $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha, perfil, ativo) VALUES (?, ?, ?, ?, 1)");
                 if ($stmt->execute([$nome, $email, $senha_hash, $perfil])) {
-                    $usuario_id = $pdo->lastInsertId();
+                    $id = $pdo->lastInsertId();
 
                     // Inserir permissões
                     if (!empty($permissoes)) {
-                        $stmtPermissao = $pdo->prepare("INSERT INTO permissoes (usuario_id, nome_permissao) VALUES (?, ?)");
+                        $stmtPermissao = $pdo->prepare("INSERT INTO permissoes (id, nome_permissao) VALUES (?, ?)");
                         foreach ($permissoes as $permissao) {
                             if (array_key_exists($permissao, $permissoes_possiveis)) {
-                                $stmtPermissao->execute([$usuario_id, $permissao]);
+                                $stmtPermissao->execute([$id, $permissao]);
                             }
                         }
                     }
