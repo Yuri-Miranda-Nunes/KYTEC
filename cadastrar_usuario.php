@@ -1,11 +1,6 @@
 <?php
 session_start();
 
-// Verifica se está logado e tem permissão
-if (!isset($_SESSION['usuario_id']) || !in_array('gerenciar_usuarios', $_SESSION['permissoes'] ?? [])) {
-    echo "Acesso negado.";
-    exit;
-}
 
 require_once 'conexao.php';
 
