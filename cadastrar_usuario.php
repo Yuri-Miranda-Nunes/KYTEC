@@ -167,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="">Selecione um perfil</option>
                         <option value="admin" <?= ($perfil === 'admin') ? 'selected' : '' ?>>Administrador</option>
                         <option value="estoquista" <?= ($perfil === 'estoquista') ? 'selected' : '' ?>>Estoquista</option>
-                        <option value="vendedor" <?= ($perfil === 'vendedor') ? 'selected' : '' ?>>Vendedor</option>
+                        <option value="visualizador" <?= ($perfil === 'visualizador') ? 'selected' : '' ?>>Visualizador</option>
                     </select>
                 </td>
             </tr>
@@ -199,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <ul>
             <li><strong>Administrador:</strong> Acesso completo ao sistema, pode gerenciar usuários</li>
             <li><strong>Estoquista:</strong> Gerencia produtos e estoque</li>
-            <li><strong>Vendedor:</strong> Acesso limitado, visualização de produtos</li>
+            <li><strong>Visualizador:</strong> Acesso limitado, visualização de produtos</li>
         </ul>
     </div>
 </body>
