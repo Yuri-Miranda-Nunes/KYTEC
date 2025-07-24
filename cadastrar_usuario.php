@@ -1,6 +1,11 @@
 <?php
 session_start();
 
+// Verifica se está logado e tem permissão
+if (!isset($_SESSION['id']) || !in_array('gerenciar_usuarios', $_SESSION['permissoes'] ?? [])) {
+  echo "Acesso negado.";
+  exit;
+}
 
 require_once 'conexao.php';
 
@@ -46,14 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Inserir o usuário
                 $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha, perfil, ativo) VALUES (?, ?, ?, ?, 1)");
                 if ($stmt->execute([$nome, $email, $senha_hash, $perfil])) {
-                    $id = $pdo->lastInsertId();
+                    $usuario_id = $pdo->lastInsertId();
 
                     // Inserir permissões
                     if (!empty($permissoes)) {
                         $stmtPermissao = $pdo->prepare("INSERT INTO permissoes (id, nome_permissao) VALUES (?, ?)");
                         foreach ($permissoes as $permissao) {
                             if (array_key_exists($permissao, $permissoes_possiveis)) {
-                                $stmtPermissao->execute([$id, $permissao]);
+                                $stmtPermissao->execute([$usuario_id, $permissao]);
                             }
                         }
                     }
