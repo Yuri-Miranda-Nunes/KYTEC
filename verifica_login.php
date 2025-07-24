@@ -30,18 +30,29 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute([$email]);
 $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Verifica se existe e se a senha bate
 if ($usuario && password_verify($senha, $usuario['senha'])) {
-    // Login bem‑sucedido: salva na sessão
-    $_SESSION['id_usuario'] = $usuario['id'];
-    $_SESSION['nome']       = $usuario['nome'];
-    $_SESSION['email']      = $usuario['email'];
+        $_SESSION['id_usuario'] = $usuario['id'];
+        $_SESSION['nome'] = $usuario['nome'];
+        $_SESSION['email'] = $usuario['email'];
+        header('Location: dashboard.php');
+        exit;
+    } else {
+    $erro = "Usuário ou senha incorretos";
+    }
 
-    header('Location: dashboard.php');
-    exit;
-}
 
 // Falha no login
 $_SESSION['erro'] = 'E‑mail ou senha inválidos!';
 header('Location: login.php');
 exit;
+// // Verifica se existe e se a senha bate
+// if ($usuario && password_verify($senha, $usuario['senha'])) {
+//     // Login bem‑sucedido: salva na sessão
+//     $_SESSION['id_usuario'] = $usuario['id'];
+//     $_SESSION['nome']       = $usuario['nome'];
+//     $_SESSION['email']      = $usuario['email'];
+
+//     header('Location: dashboard.php');
+//     exit;
+    
+// }
