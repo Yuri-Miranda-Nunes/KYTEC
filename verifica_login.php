@@ -54,7 +54,7 @@ try {
         echo "Email no banco: '" . $usuario['email'] . "'<br>";
         echo "Hash no banco: '" . $usuario['senha'] . "'<br>";
         echo "Usuario ativo: " . ($usuario['ativo'] ? 'SIM' : 'NAO') . "<br>";
-        echo "Password verify: " . (password_verify($senha, $usuario['senha']) ? 'OK' : 'FALHOU') . "<br>";
+        
         
         // Testa senhas comuns
         $senhas_teste = ['admin', '123456', 'password', 'admin123'];
