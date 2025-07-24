@@ -45,12 +45,12 @@ try {
     
     // Debug temporário - REMOVA depois de resolver
     
-    echo "Email: " . $email . "<br>";
-    echo "Usuario encontrado: " . ($usuario ? 'SIM' : 'NAO') . "<br>";
-    if ($usuario) {
-        echo "Password verify: " . (password_verify($senha, $usuario['senha']) ? 'OK' : 'FALHOU') . "<br>";
-    }
-    exit;
+    // echo "Email: " . $email . "<br>";
+    // echo "Usuario encontrado: " . ($usuario ? 'SIM' : 'NAO') . "<br>";
+    // if ($usuario) {
+    //     echo "Password verify: " . (password_verify($senha, $usuario['senha']) ? 'OK' : 'FALHOU') . "<br>";
+    // }
+    // exit;
     
     
     // Verifica se existe e se a senha bate
