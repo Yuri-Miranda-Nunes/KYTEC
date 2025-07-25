@@ -421,7 +421,7 @@ function temPermissao($permissao) {
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2><i class="fas fa-boxes"></i> Sistema de Estoque</h2>
+                <h2><i class="fas fa-boxes"></i> KYTEC</h2>
             </div>
             
             <nav class="sidebar-nav">
@@ -445,14 +445,6 @@ function temPermissao($permissao) {
                             <span>Listar Produtos</span>
                         </a>
                     </div>
-                    <?php if (temPermissao('cadastrar_produtos')): ?>
-                    <div class="nav-item">
-                        <a href="cadastrar_produto.php" class="nav-link">
-                            <i class="fas fa-plus"></i>
-                            <span>Cadastrar Produto</span>
-                        </a>
-                    </div>
-                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 
@@ -466,52 +458,6 @@ function temPermissao($permissao) {
                             <span>Listar Usuários</span>
                         </a>
                     </div>
-                    <div class="nav-item">
-                        <a href="cadastrar_usuario.php" class="nav-link">
-                            <i class="fas fa-user-plus"></i>
-                            <span>Cadastrar Usuário</span>
-                        </a>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <!-- Estoque -->
-                <?php if (temPermissao('listar_produtos')): ?>
-                <div class="nav-section">
-                    <div class="nav-section-title">Movimentação</div>
-                    <div class="nav-item">
-                        <a href="entradas_estoque.php" class="nav-link">
-                            <i class="fas fa-arrow-up"></i>
-                            <span>Entradas</span>
-                        </a>
-                    </div>
-                    <div class="nav-item">
-                        <a href="saidas_estoque.php" class="nav-link">
-                            <i class="fas fa-arrow-down"></i>
-                            <span>Saídas</span>
-                        </a>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <!-- Relatórios -->
-                <?php if (temPermissao('listar_produtos')): ?>
-                <div class="nav-section">
-                    <div class="nav-section-title">Relatórios</div>
-                    <div class="nav-item">
-                        <a href="relatorio_estoque.php" class="nav-link">
-                            <i class="fas fa-chart-bar"></i>
-                            <span>Relatório de Estoque</span>
-                        </a>
-                    </div>
-                    <?php if (temPermissao('gerenciar_usuarios')): ?>
-                    <div class="nav-item">
-                        <a href="relatorio_usuarios.php" class="nav-link">
-                            <i class="fas fa-users-cog"></i>
-                            <span>Relatório de Usuários</span>
-                        </a>
-                    </div>
-                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 
