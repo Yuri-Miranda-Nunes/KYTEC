@@ -18,303 +18,832 @@ function temPermissao($permissao) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Sistema de Estoque</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            box-sizing: border-box;
         }
-        .container {
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        .dashboard {
             display: flex;
             min-height: 100vh;
         }
-        .menu-lateral {
-            width: 250px;
-            background-color: #2c3e50;
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: #1e293b;
             color: white;
+            padding: 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 24px 20px;
+            background: #0f172a;
+            border-bottom: 1px solid #334155;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-nav {
             padding: 20px 0;
         }
-        .menu-lateral ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
+
+        .nav-section {
+            margin-bottom: 24px;
         }
-        .menu-lateral li {
-            padding: 10px 20px;
-        }
-        .menu-lateral li:first-child {
-            background-color: #34495e;
-            font-weight: bold;
-            text-align: center;
-        }
-        .menu-lateral a {
-            color: white;
-            text-decoration: none;
-            display: block;
-            padding: 8px 0;
-            border-radius: 4px;
-        }
-        .menu-lateral a:hover {
-            background-color: #34495e;
-            padding-left: 10px;
-            transition: all 0.3s;
-        }
-        .menu-secao {
-            color: #bdc3c7;
-            font-size: 0.9rem;
-            font-weight: bold;
-            margin-top: 15px;
-            margin-bottom: 5px;
+
+        .nav-section-title {
+            color: #94a3b8;
+            font-size: 0.75rem;
+            font-weight: 600;
             text-transform: uppercase;
-            border-bottom: 1px solid #34495e;
-            padding-bottom: 5px;
+            letter-spacing: 0.05em;
+            padding: 0 20px 8px;
+            margin-bottom: 8px;
         }
-        .menu-item {
-            padding: 8px 20px;
+
+        .nav-item {
+            margin-bottom: 2px;
         }
-        .menu-item a {
-            padding: 8px 10px;
-        }
-        .conteudo {
-            flex: 1;
-            padding: 20px;
-        }
-        .header {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .info-usuario {
-            background-color: #e8f4f8;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-        .permissoes {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-        .permissoes ul {
-            margin: 10px 0;
-            padding-left: 20px;
-        }
-        .btn-sair {
-            background-color: #dc3545;
-            color: white;
-            padding: 10px 20px;
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: #cbd5e1;
             text-decoration: none;
-            border-radius: 5px;
-            display: inline-block;
-            margin-top: 10px;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
         }
-        .btn-sair:hover {
-            background-color: #c82333;
+
+        .nav-link:hover {
+            background: #334155;
+            color: white;
+            transform: translateX(4px);
         }
-        .estatisticas {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
+
+        .nav-link.active {
+            background: #3b82f6;
+            color: white;
         }
-        .card-stat {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+
+        .nav-link i {
+            width: 20px;
             text-align: center;
         }
-        .card-stat h3 {
-            margin: 0 0 10px 0;
-            color: #2c3e50;
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 24px;
         }
-        .card-stat .numero {
+
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .header-subtitle {
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .user-details h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .user-details p {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        /* Stats Cards */
+        .stats-section {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .stat-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .stat-value {
             font-size: 2rem;
-            font-weight: bold;
-            color: #3498db;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .stat-change {
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stat-change.positive {
+            color: #059669;
+        }
+
+        .stat-change.negative {
+            color: #dc2626;
+        }
+
+        /* Chart Section */
+        .chart-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 32px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .chart-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .chart-filters {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+
+        /* Recent Activity */
+        .activity-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        .activity-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-weight: 500;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .activity-meta {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        .activity-value {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .activity-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Color Schemes */
+        .blue { background: #dbeafe; color: #1d4ed8; }
+        .green { background: #dcfce7; color: #16a34a; }
+        .yellow { background: #fef3c7; color: #d97706; }
+        .red { background: #fee2e2; color: #dc2626; }
+        .purple { background: #f3e8ff; color: #9333ea; }
+
+        .btn-logout {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-logout:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <nav class="menu-lateral">
-            <ul>
-                <li><strong>📋 Sistema de Estoque</strong></li>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-boxes"></i> Sistema de Estoque</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <!-- Dashboard -->
+                <div class="nav-section">
+                    <div class="nav-item">
+                        <a href="index.php" class="nav-link active">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                </div>
 
-                <!-- Seção Produtos -->
+                <!-- Produtos -->
                 <?php if (temPermissao('listar_produtos')): ?>
-                    <li class="menu-secao">📦 Produtos</li>
-                    <li class="menu-item">
-                        <a href="listar_produtos.php">📋 Listar Produtos</a>
-                    </li>
+                <div class="nav-section">
+                    <div class="nav-section-title">Produtos</div>
+                    <div class="nav-item">
+                        <a href="listar_produtos.php" class="nav-link">
+                            <i class="fas fa-list"></i>
+                            <span>Listar Produtos</span>
+                        </a>
+                    </div>
                     <?php if (temPermissao('cadastrar_produtos')): ?>
-                        <li class="menu-item">
-                            <a href="cadastrar_produto.php">➕ Cadastrar Produto</a>
-                        </li>
+                    <div class="nav-item">
+                        <a href="cadastrar_produto.php" class="nav-link">
+                            <i class="fas fa-plus"></i>
+                            <span>Cadastrar Produto</span>
+                        </a>
+                    </div>
                     <?php endif; ?>
+                </div>
                 <?php endif; ?>
 
-                <!-- Seção Usuários -->
+                <!-- Usuários -->
                 <?php if (temPermissao('gerenciar_usuarios')): ?>
-                    <li class="menu-secao">👥 Usuários</li>
-                    <li class="menu-item">
-                        <a href="listar_usuarios.php">📋 Listar Usuários</a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="cadastrar_usuario.php">➕ Cadastrar Usuário</a>
-                    </li>
+                <div class="nav-section">
+                    <div class="nav-section-title">Usuários</div>
+                    <div class="nav-item">
+                        <a href="listar_usuarios.php" class="nav-link">
+                            <i class="fas fa-users"></i>
+                            <span>Listar Usuários</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="cadastrar_usuario.php" class="nav-link">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Cadastrar Usuário</span>
+                        </a>
+                    </div>
+                </div>
                 <?php endif; ?>
 
-                <!-- Seção Estoque (se houver permissões relacionadas) -->
+                <!-- Estoque -->
                 <?php if (temPermissao('listar_produtos')): ?>
-                    <li class="menu-secao">📊 Estoque</li>
-                    <li class="menu-item">
-                        <a href="entradas_estoque.php">📈 Entradas</a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="saidas_estoque.php">📉 Saídas</a>
-                    </li>
+                <div class="nav-section">
+                    <div class="nav-section-title">Movimentação</div>
+                    <div class="nav-item">
+                        <a href="entradas_estoque.php" class="nav-link">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>Entradas</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="saidas_estoque.php" class="nav-link">
+                            <i class="fas fa-arrow-down"></i>
+                            <span>Saídas</span>
+                        </a>
+                    </div>
+                </div>
                 <?php endif; ?>
 
-                <!-- Seção Relatórios -->
+                <!-- Relatórios -->
                 <?php if (temPermissao('listar_produtos')): ?>
-                    <li class="menu-secao">📋 Relatórios</li>
-                    <li class="menu-item">
-                        <a href="relatorio_estoque.php">📊 Relatório de Estoque</a>
-                    </li>
+                <div class="nav-section">
+                    <div class="nav-section-title">Relatórios</div>
+                    <div class="nav-item">
+                        <a href="relatorio_estoque.php" class="nav-link">
+                            <i class="fas fa-chart-bar"></i>
+                            <span>Relatório de Estoque</span>
+                        </a>
+                    </div>
                     <?php if (temPermissao('gerenciar_usuarios')): ?>
-                        <li class="menu-item">
-                            <a href="relatorio_usuarios.php">👥 Relatório de Usuários</a>
-                        </li>
+                    <div class="nav-item">
+                        <a href="relatorio_usuarios.php" class="nav-link">
+                            <i class="fas fa-users-cog"></i>
+                            <span>Relatório de Usuários</span>
+                        </a>
+                    </div>
                     <?php endif; ?>
+                </div>
                 <?php endif; ?>
 
-                <!-- Seção Sistema -->
-                <li class="menu-secao">⚙️ Sistema</li>
-                <li class="menu-item">
-                    <a href="perfil.php">👤 Meu Perfil</a>
-                </li>
-                <li class="menu-item">
-                    <a href="logout.php">🚪 Sair</a>
-                </li>
-            </ul>
-        </nav>
+                <!-- Sistema -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Sistema</div>
+                    <div class="nav-item">
+                        <a href="perfil.php" class="nav-link">
+                            <i class="fas fa-user-circle"></i>
+                            <span>Meu Perfil</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="logout.php" class="nav-link">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Sair</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </aside>
 
-        <div class="conteudo">
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
             <div class="header">
-                <h1>Bem-vindo ao Sistema de Estoque!</h1>
-                
-                <div class="info-usuario">
-                    <h3>Informações do Usuário:</h3>
-                    <p><strong>Nome:</strong> <?= htmlspecialchars($_SESSION['usuario_nome']) ?></p>
-                    <p><strong>Email:</strong> <?= htmlspecialchars($_SESSION['usuario_email']) ?></p>
-                    <p><strong>Perfil:</strong> <?= htmlspecialchars($_SESSION['usuario_perfil']) ?></p>
+                <div class="header-left">
+                    <h1>Dashboard</h1>
+                    <p class="header-subtitle">Visão geral do sistema de estoque</p>
                 </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <?= strtoupper(substr($_SESSION['usuario_nome'], 0, 1)) ?>
+                        </div>
+                        <div class="user-details">
+                            <h3><?= htmlspecialchars($_SESSION['usuario_nome']) ?></h3>
+                            <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
+                        </div>
+                    </div>
+                    <a href="logout.php" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Sair
+                    </a>
+                </div>
+            </div>
 
-                <div class="permissoes">
-                    <h3>Suas Permissões:</h3>
-                    <?php if (!empty($_SESSION['permissoes'])): ?>
-                        <ul>
-                            <?php foreach ($_SESSION['permissoes'] as $permissao): ?>
-                                <li>
-                                    <?php
-                                    // Traduzir permissões para português
-                                    $traducoes = [
-                                        'listar_produtos' => '📋 Listar Produtos',
-                                        'cadastrar_produtos' => '➕ Cadastrar Produtos', 
-                                        'editar_produtos' => '✏️ Editar Produtos',
-                                        'excluir_produtos' => '🗑️ Excluir Produtos',
-                                        'gerenciar_usuarios' => '👑 Gerenciar Usuários'
-                                    ];
-                                    echo $traducoes[$permissao] ?? ucfirst(str_replace('_', ' ', $permissao));
-                                    ?>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php else: ?>
-                        <p>Nenhuma permissão específica definida.</p>
+            <!-- Stats Section -->
+            <?php if (temPermissao('listar_produtos')): ?>
+            <div class="stats-section">
+                <h2 class="section-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Estatísticas Gerais
+                </h2>
+                
+                <?php
+                // Buscar estatísticas básicas do sistema
+                require_once 'conexao.php';
+                try {
+                    $bd = new BancoDeDados();
+                    
+                    // Total de produtos
+                    $stmt_produtos = $bd->pdo->query("SELECT COUNT(*) FROM produtos WHERE ativo = 1");
+                    $total_produtos = $stmt_produtos->fetchColumn();
+                    
+                    // Produtos com estoque baixo
+                    $stmt_estoque_baixo = $bd->pdo->query("SELECT COUNT(*) FROM produtos WHERE estoque_atual <= estoque_minimo AND ativo = 1");
+                    $estoque_baixo = $stmt_estoque_baixo->fetchColumn();
+                    
+                    // Valor total do estoque
+                    $stmt_valor = $bd->pdo->query("SELECT SUM(estoque_atual * preco) FROM produtos WHERE ativo = 1");
+                    $valor_total = $stmt_valor->fetchColumn() ?: 0;
+                    
+                    // Total de usuários (se tiver permissão)
+                    $total_usuarios = 0;
+                    if (temPermissao('gerenciar_usuarios')) {
+                        $stmt_usuarios = $bd->pdo->query("SELECT COUNT(*) FROM usuarios WHERE ativo = 1");
+                        $total_usuarios = $stmt_usuarios->fetchColumn();
+                    }
+                } catch (Exception $e) {
+                    $total_produtos = 0;
+                    $estoque_baixo = 0;
+                    $valor_total = 0;
+                    $total_usuarios = 0;
+                }
+                ?>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div>
+                                <div class="stat-title">Total de Produtos</div>
+                                <div class="stat-value"><?= number_format($total_produtos, 0, ',', '.') ?></div>
+                                <div class="stat-change positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span>Produtos ativos</span>
+                                </div>
+                            </div>
+                            <div class="stat-icon blue">
+                                <i class="fas fa-boxes"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div>
+                                <div class="stat-title">Estoque Baixo</div>
+                                <div class="stat-value" style="color: <?= $estoque_baixo > 0 ? '#dc2626' : '#16a34a' ?>;">
+                                    <?= number_format($estoque_baixo, 0, ',', '.') ?>
+                                </div>
+                                <div class="stat-change <?= $estoque_baixo > 0 ? 'negative' : 'positive' ?>">
+                                    <i class="fas fa-<?= $estoque_baixo > 0 ? 'exclamation-triangle' : 'check-circle' ?>"></i>
+                                    <span><?= $estoque_baixo > 0 ? 'Requer atenção' : 'Situação normal' ?></span>
+                                </div>
+                            </div>
+                            <div class="stat-icon <?= $estoque_baixo > 0 ? 'red' : 'green' ?>">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div>
+                                <div class="stat-title">Valor Total Estoque</div>
+                                <div class="stat-value">R$ <?= number_format($valor_total, 2, ',', '.') ?></div>
+                                <div class="stat-change positive">
+                                    <i class="fas fa-dollar-sign"></i>
+                                    <span>Valor inventário</span>
+                                </div>
+                            </div>
+                            <div class="stat-icon green">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <?php if (temPermissao('gerenciar_usuarios')): ?>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div>
+                                <div class="stat-title">Usuários Ativos</div>
+                                <div class="stat-value"><?= number_format($total_usuarios, 0, ',', '.') ?></div>
+                                <div class="stat-change positive">
+                                    <i class="fas fa-users"></i>
+                                    <span>Usuários cadastrados</span>
+                                </div>
+                            </div>
+                            <div class="stat-icon purple">
+                                <i class="fas fa-user-friends"></i>
+                            </div>
+                        </div>
+                    </div>
                     <?php endif; ?>
                 </div>
-
-                <a href="logout.php" class="btn-sair">🚪 Sair do Sistema</a>
             </div>
 
-            <!-- Dashboard com estatísticas -->
-            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                <h2>📊 Painel de Controle</h2>
-                <p>Bem-vindo(a), <strong><?= htmlspecialchars($_SESSION['usuario_nome']) ?></strong>! Selecione uma opção no menu lateral para começar.</p>
-                
-                <!-- Cards de estatísticas rápidas -->
-                <?php if (temPermissao('listar_produtos')): ?>
-                    <div class="estatisticas">
-                        <?php
-                        // Buscar estatísticas básicas do sistema
-                        require_once 'conexao.php';
-                        try {
-                            $bd = new BancoDeDados();
-                            
-                            // Total de produtos
-                            $stmt_produtos = $bd->pdo->query("SELECT COUNT(*) FROM produtos WHERE ativo = 1");
-                            $total_produtos = $stmt_produtos->fetchColumn();
-                            
-                            // Produtos com estoque baixo
-                            $stmt_estoque_baixo = $bd->pdo->query("SELECT COUNT(*) FROM produtos WHERE estoque_atual <= estoque_minimo AND ativo = 1");
-                            $estoque_baixo = $stmt_estoque_baixo->fetchColumn();
-                            
-                            // Total de usuários (se tiver permissão)
-                            $total_usuarios = 0;
-                            if (temPermissao('gerenciar_usuarios')) {
-                                $stmt_usuarios = $bd->pdo->query("SELECT COUNT(*) FROM usuarios WHERE ativo = 1");
-                                $total_usuarios = $stmt_usuarios->fetchColumn();
-                            }
-                        } catch (Exception $e) {
-                            $total_produtos = 0;
-                            $estoque_baixo = 0;
-                            $total_usuarios = 0;
-                        }
+            <!-- Chart Section -->
+            <div class="chart-section">
+                <div class="chart-header">
+                    <h3 class="chart-title">Movimentação de Estoque - Últimos 30 dias</h3>
+                    <div class="chart-filters">
+                        <button class="filter-btn active">1 semana</button>
+                        <button class="filter-btn">1 mês</button>
+                        <button class="filter-btn">3 meses</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="activity-section">
+                <div class="activity-card">
+                    <h3 class="section-title">
+                        <i class="fas fa-history"></i>
+                        Atividades Recentes
+                    </h3>
+                    
+                    <div class="activity-item">
+                        <div class="activity-avatar blue">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">Novo produto cadastrado</div>
+                            <div class="activity-meta">Mouse Gamer XYZ • há 2 horas</div>
+                        </div>
+                        <div class="activity-value">+50 unid.</div>
+                    </div>
+
+                    <div class="activity-item">
+                        <div class="activity-avatar green">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">Entrada de estoque</div>
+                            <div class="activity-meta">Teclado Mecânico ABC • há 4 horas</div>
+                        </div>
+                        <div class="activity-value">+25 unid.</div>
+                    </div>
+
+                    <div class="activity-item">
+                        <div class="activity-avatar red">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">Saída de estoque</div>
+                            <div class="activity-meta">Monitor LED 24" • há 6 horas</div>
+                        </div>
+                        <div class="activity-value">-10 unid.</div>
+                    </div>
+
+                    <div class="activity-item">
+                        <div class="activity-avatar yellow">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">Estoque baixo detectado</div>
+                            <div class="activity-meta">Cabo USB-C • há 1 dia</div>
+                        </div>
+                        <div class="activity-value">5 unid.</div>
+                    </div>
+                </div>
+
+                <div class="activity-card">
+                    <h3 class="section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Suas Permissões
+                    </h3>
+                    
+                    <?php if (!empty($_SESSION['permissoes'])): ?>
+                        <?php 
+                        $traducoes = [
+                            'listar_produtos' => ['Listar Produtos', 'fas fa-list', 'blue'],
+                            'cadastrar_produtos' => ['Cadastrar Produtos', 'fas fa-plus', 'green'], 
+                            'editar_produtos' => ['Editar Produtos', 'fas fa-edit', 'yellow'],
+                            'excluir_produtos' => ['Excluir Produtos', 'fas fa-trash', 'red'],
+                            'gerenciar_usuarios' => ['Gerenciar Usuários', 'fas fa-users-cog', 'purple']
+                        ];
+                        foreach ($_SESSION['permissoes'] as $permissao): 
+                            $info = $traducoes[$permissao] ?? [ucfirst(str_replace('_', ' ', $permissao)), 'fas fa-check', 'blue'];
                         ?>
-                        
-                        <div class="card-stat">
-                            <h3>Total de Produtos</h3>
-                            <div class="numero"><?= $total_produtos ?></div>
-                        </div>
-                        
-                        <div class="card-stat">
-                            <h3>Estoque Baixo</h3>
-                            <div class="numero" style="color: <?= $estoque_baixo > 0 ? '#e74c3c' : '#27ae60' ?>;">
-                                <?= $estoque_baixo ?>
+                        <div class="activity-item">
+                            <div class="activity-avatar <?= $info[2] ?>">
+                                <i class="<?= $info[1] ?>"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title"><?= $info[0] ?></div>
+                                <div class="activity-meta">Permissão ativa</div>
+                            </div>
+                            <div class="activity-value">
+                                <i class="fas fa-check-circle" style="color: #16a34a;"></i>
                             </div>
                         </div>
-                        
-                        <?php if (temPermissao('gerenciar_usuarios')): ?>
-                            <div class="card-stat">
-                                <h3>Usuários Ativos</h3>
-                                <div class="numero"><?= $total_usuarios ?></div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="activity-item">
+                            <div class="activity-avatar red">
+                                <i class="fas fa-times"></i>
                             </div>
-                        <?php endif; ?>
-                        
-                        <div class="card-stat">
-                            <h3>Seu Perfil</h3>
-                            <div style="font-size: 1.2rem; font-weight: bold; color: #2c3e50; margin-top: 10px;">
-                                <?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?>
+                            <div class="activity-content">
+                                <div class="activity-title">Nenhuma permissão</div>
+                                <div class="activity-meta">Entre em contato com o administrador</div>
                             </div>
                         </div>
-                    </div>
-                <?php endif; ?>
-                
-                <!-- Debug info (remova em produção) -->
-                <?php if (isset($_GET['debug'])): ?>
-                    <div style="background: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; margin-top: 20px;">
-                        <h4>🔧 Informações de Debug:</h4>
-                        <pre><?php print_r($_SESSION); ?></pre>
-                    </div>
-                <?php endif; ?>
+                    <?php endif; ?>
+                </div>
             </div>
-        </div>
+            <?php endif; ?>
+        </main>
     </div>
+
+    <script>
+        // Chart.js configuration
+        const ctx = document.getElementById('stockChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+                    datasets: [{
+                        label: 'Entradas',
+                        data: [12, 19, 8, 15, 25, 13, 18],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Saídas',
+                        data: [8, 11, 13, 9, 16, 12, 14],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#f1f5f9'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: '#f1f5f9'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                // Aqui você pode implementar lógica para mudar os dados do gráfico com base na seleção
+                // Ex: trocar datasets para refletir "1 mês" ou "3 meses"
+            });
+        });
+    </script>
 </body>
 </html>
