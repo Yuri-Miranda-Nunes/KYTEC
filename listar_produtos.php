@@ -5,6 +5,16 @@ if (!in_array('listar_produtos', $_SESSION['permissoes'])) {
   echo "Acesso negado.";
   exit;
 }
+// Verifica se está logado
+if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+  header("Location: login.php");
+  exit;
+}
+
+// Função para verificar permissões
+function temPermissao($permissao) {
+  return in_array($permissao, $_SESSION['permissoes'] ?? []);
+}
 
 require_once 'conexao.php';
 $bd = new BancoDeDados();
@@ -168,7 +178,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
       </div>
     </nav>
   </aside>
-  
+
   <h2>Lista de Produtos</h2>
   <table border="1">
     <tr>
