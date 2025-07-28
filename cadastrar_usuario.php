@@ -133,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <h2>Cadastrar Novo Usuário</h2>
 
     <p>
-        <a href="dashboard.php">Voltar ao Dashboard</a> | 
+        <a href="index.php">Voltar ao Dashboard</a> | 
         <a href="listar_usuarios.php">Ver Usuários Cadastrados</a>
     </p>
 

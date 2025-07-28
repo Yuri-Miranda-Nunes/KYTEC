@@ -132,7 +132,7 @@ try {
         $_SESSION['permissoes'] = $permissoes_db;
         unset($_SESSION['erro']);
         
-        header('Location: dashboard.php');
+        header('Location: index.php');
         exit;
     }
     
