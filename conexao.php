@@ -1,9 +1,9 @@
 <?php
 class BancoDeDados {
-    private $host = 'sql200.infinityfree.com';
-    private $dbname = 'if0_39533103_euro_banco';
-    private $usuario = 'if0_39533103';
-    private $senha = '7uZMTnbzCohtJq';
+    private $host = "localhost";
+    private $dbname = "euro_banco";
+    private $usuario = "root";
+    private $senha = "";
     public $pdo;
 
     public function __construct() {
