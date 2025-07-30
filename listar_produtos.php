@@ -18,10 +18,7 @@ function temPermissao($permissao) {
 
 require_once 'conexao.php';
 $bd = new BancoDeDados();
-$sql = "SELECT p.*, c.nome as categoria_nome 
-        FROM produtos p 
-        LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
-        ORDER BY p.nome ASC";
+$sql = "SELECT * FROM produtos ORDER BY nome ASC";
 $stmt = $bd->pdo->query($sql);
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -261,6 +258,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 16px 12px;
             border-bottom: 1px solid #f1f5f9;
             color: #64748b;
+            vertical-align: top;
         }
 
         .products-table tbody tr {
@@ -278,6 +276,38 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .product-name {
             font-weight: 500;
             color: #1e293b;
+        }
+
+        .product-code {
+            font-family: 'Courier New', monospace;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: #475569;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .type-acabado {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .type-materia-prima {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .type-outro {
+            background: #e0e7ff;
+            color: #3730a3;
         }
 
         .stock-badge {
@@ -308,18 +338,33 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             color: #16a34a;
         }
 
-        .category-tag {
-            background: #e0e7ff;
-            color: #3730a3;
-            padding: 2px 8px;
-            border-radius: 12px;
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
             font-size: 0.75rem;
             font-weight: 500;
         }
 
-        .no-category {
-            background: #f1f5f9;
-            color: #64748b;
+        .status-ativo {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .status-inativo {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .description-cell {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .description-full {
+            cursor: help;
         }
 
         /* Action Buttons */
@@ -404,6 +449,10 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             .products-table td {
                 padding: 12px 8px;
             }
+
+            .description-cell {
+                max-width: 120px;
+            }
         }
     </style>
 </head>
@@ -436,6 +485,14 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <span>Listar Produtos</span>
                         </a>
                     </div>
+                    <?php if (temPermissao('cadastrar_produtos')): ?>
+                    <div class="nav-item">
+                        <a href="cadastrar_prod.php" class="nav-link">
+                            <i class="fas fa-plus"></i>
+                            <span>Cadastrar Produto</span>
+                        </a>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 
@@ -499,7 +556,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <!-- Action Buttons -->
             <div class="action-buttons">
                 <?php if (temPermissao('cadastrar_produtos')): ?>
-                <a href="cadastrar_produto.php" class="btn btn-primary">
+                <a href="cadastrar_prod.php" class="btn btn-primary">
                     <i class="fas fa-plus"></i>
                     Novo Produto
                 </a>
@@ -518,12 +575,14 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <table class="products-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
                                 <th>Nome</th>
+                                <th>Código</th>
                                 <th>Tipo</th>
-                                <th>Categoria</th>
-                                <th>Estoque</th>
-                                <th>Preço de Venda</th>
+                                <th>Descrição</th>
+                                <th>Preço Unitário</th>
+                                <th>Estoque Mín.</th>
+                                <th>Estoque Atual</th>
+                                <th>Status</th>
                                 <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
                                 <th>Ações</th>
                                 <?php endif; ?>
@@ -532,15 +591,31 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <tbody>
                             <?php foreach ($produtos as $p): ?>
                             <tr>
-                                <td><?= $p['id_produto'] ?></td>
                                 <td class="product-name"><?= htmlspecialchars($p['nome']) ?></td>
-                                <td><?= htmlspecialchars($p['tipo']) ?></td>
                                 <td>
-                                    <?php if ($p['categoria_nome']): ?>
-                                        <span class="category-tag"><?= htmlspecialchars($p['categoria_nome']) ?></span>
-                                    <?php else: ?>
-                                        <span class="category-tag no-category">Sem Categoria</span>
-                                    <?php endif; ?>
+                                    <span class="product-code"><?= htmlspecialchars($p['codigo']) ?></span>
+                                </td>
+                                <td>
+                                    <?php 
+                                    $tipo = $p['tipo'];
+                                    $tipoClass = 'type-outro';
+                                    if ($tipo === 'acabado') $tipoClass = 'type-acabado';
+                                    elseif ($tipo === 'matéria-prima') $tipoClass = 'type-materia-prima';
+                                    ?>
+                                    <span class="type-badge <?= $tipoClass ?>">
+                                        <?= htmlspecialchars(ucfirst($tipo)) ?>
+                                    </span>
+                                </td>
+                                <td class="description-cell" title="<?= htmlspecialchars($p['descricao']) ?>">
+                                    <?= htmlspecialchars($p['descricao'] ?: 'Sem descrição') ?>
+                                </td>
+                                <td class="price">
+                                    R$ <?= number_format($p['preco_unitario'], 2, ',', '.') ?>
+                                </td>
+                                <td>
+                                    <span class="stock-badge stock-normal">
+                                        <?= $p['estoque_minimo'] ?> unid.
+                                    </span>
                                 </td>
                                 <td>
                                     <?php 
@@ -554,9 +629,15 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         $badgeClass = 'stock-medium';
                                     }
                                     ?>
-                                    <span class="stock-badge <?= $badgeClass ?>"><?= $estoque ?> unid.</span>
+                                    <span class="stock-badge <?= $badgeClass ?>">
+                                        <?= $estoque ?> unid.
+                                    </span>
                                 </td>
-                                <td class="price">R$ <?= number_format($p['preco_venda'], 2, ',', '.') ?></td>
+                                <td>
+                                    <span class="status-badge <?= $p['ativo'] ? 'status-ativo' : 'status-inativo' ?>">
+                                        <?= $p['ativo'] ? 'Ativo' : 'Inativo' ?>
+                                    </span>
+                                </td>
                                 <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
                                 <td>
                                     <div style="display: flex; gap: 8px;">
@@ -590,7 +671,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <p>Não há produtos cadastrados no sistema ainda.</p>
                     <?php if (temPermissao('cadastrar_produtos')): ?>
                     <br>
-                    <a href="cadastrar_produto.php" class="btn btn-primary">
+                    <a href="cadastrar_prod.php" class="btn btn-primary">
                         <i class="fas fa-plus"></i>
                         Cadastrar Primeiro Produto
                     </a>
