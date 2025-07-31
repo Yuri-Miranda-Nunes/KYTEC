@@ -18,7 +18,23 @@ function temPermissao($permissao) {
 
 require_once 'conexao.php';
 $bd = new BancoDeDados();
-$sql = "SELECT * FROM produtos ORDER BY nome ASC";
+
+// Parâmetros de ordenação
+$ordem = $_GET['ordem'] ?? 'nome';
+$direcao = $_GET['direcao'] ?? 'asc';
+
+// Colunas permitidas para ordenação (segurança)
+$colunasPermitidas = ['nome', 'codigo', 'tipo', 'descricao', 'preco_unitario', 'estoque_minimo', 'estoque_atual', 'ativo'];
+
+// Validar ordem e direção
+if (!in_array($ordem, $colunasPermitidas)) {
+    $ordem = 'nome';
+}
+if (!in_array($direcao, ['asc', 'desc'])) {
+    $direcao = 'asc';
+}
+
+$sql = "SELECT * FROM produtos ORDER BY {$ordem} {$direcao}";
 $stmt = $bd->pdo->query($sql);
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -45,6 +61,7 @@ function urlOrdenar($coluna) {
     return '?' . http_build_query($query);
 }
 ?>
+
 
 
 <!DOCTYPE html>
@@ -603,14 +620,14 @@ function urlOrdenar($coluna) {
                     <table class="products-table">
                         <thead>
                             <tr>
-                            <th><a href="<?= urlOrdenar('nome') ?>">Nome <?= iconeOrdenacao('nome') ?></a></th>
-                            <th><a href="<?= urlOrdenar('codigo') ?>">Código <?= iconeOrdenacao('codigo') ?></a></th>
-                                <th>Tipo</th>
-                                <th>Descrição</th>
-                                <th>Preço Unitário</th>
-                                <th>Estoque Mín.</th>
-                                <th>Estoque Atual</th>
-                                <th>Status</th>
+                                <th><a href="<?= urlOrdenar('nome') ?>">Nome <?= iconeOrdenacao('nome') ?></a></th>
+                                <th><a href="<?= urlOrdenar('codigo') ?>">Código <?= iconeOrdenacao('codigo') ?></a></th>
+                                <th><a href="<?= urlOrdenar('tipo') ?>">Tipo <?= iconeOrdenacao('tipo') ?></a></th>
+                                <th><a href="<?= urlOrdenar('descricao') ?>">Descrição <?= iconeOrdenacao('descricao') ?></a></th>
+                                <th><a href="<?= urlOrdenar('preco_unitario') ?>">Preço Unitário <?= iconeOrdenacao('preco_unitario') ?></a></th>
+                                <th><a href="<?= urlOrdenar('estoque_minimo') ?>">Estoque Mín. <?= iconeOrdenacao('estoque_minimo') ?></a></th>
+                                <th><a href="<?= urlOrdenar('estoque_atual') ?>">Estoque Atual <?= iconeOrdenacao('estoque_atual') ?></a></th>
+                                <th><a href="<?= urlOrdenar('ativo') ?>">Status <?= iconeOrdenacao('ativo') ?></a></th>
                                 <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
                                 <th>Ações</th>
                                 <?php endif; ?>
@@ -618,21 +635,7 @@ function urlOrdenar($coluna) {
                         </thead>
                         
                         <tbody>
-                            
-                            <?php 
-                        
-                            $ordem = $_GET['ordem'] ?? null;
-                            $direcao = $_GET['direcao'] ?? 'asc';
-                            
-                            if ($ordem && isset($produtos[0][$ordem])) {
-                                usort($produtos, function($a, $b) use ($ordem, $direcao) {
-                                    $res = $a[$ordem] <=> $b[$ordem];
-                                    return $direcao === 'asc' ? $res : -$res;
-                                });
-                            }
-                        
-                            
-                            foreach ($produtos as $p): ?>
+                            <?php foreach ($produtos as $p): ?>
                             <tr>
                                 <td class="product-name"><?= htmlspecialchars($p['nome']) ?></td>
                                 <td>
@@ -724,7 +727,6 @@ function urlOrdenar($coluna) {
             </div>
         </main>
     </div>
-
-    
 </body>
+</html>
 </html>
