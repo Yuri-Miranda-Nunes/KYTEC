@@ -21,7 +21,32 @@ $bd = new BancoDeDados();
 $sql = "SELECT * FROM produtos ORDER BY nome ASC";
 $stmt = $bd->pdo->query($sql);
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+function novaDirecao($coluna) {
+    $ordemAtual = $_GET['ordem'] ?? '';
+    $direcaoAtual = $_GET['direcao'] ?? 'asc';
+    return ($ordemAtual === $coluna && $direcaoAtual === 'asc') ? 'desc' : 'asc';
+}
+
+function iconeOrdenacao($coluna) {
+    $ordemAtual = $_GET['ordem'] ?? '';
+    $direcaoAtual = $_GET['direcao'] ?? 'asc';
+    if ($ordemAtual === $coluna) {
+        return $direcaoAtual === 'asc' ? '↑' : '↓';
+    }
+    return '';
+}
+
+function urlOrdenar($coluna) {
+    $direcao = novaDirecao($coluna);
+    $query = $_GET;
+    $query['ordem'] = $coluna;
+    $query['direcao'] = $direcao;
+    return '?' . http_build_query($query);
+}
 ?>
+
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -219,7 +244,10 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             margin-bottom: 32px;
         }
-
+        a{
+            text-decoration: none;
+            color: inherit;
+        }
         .section-title {
             font-size: 1.25rem;
             font-weight: 600;
@@ -575,8 +603,8 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <table class="products-table">
                         <thead>
                             <tr>
-                                <th>Nome</th>
-                                <th>Código</th>
+                            <th><a href="<?= urlOrdenar('nome') ?>">Nome <?= iconeOrdenacao('nome') ?></a></th>
+                            <th><a href="<?= urlOrdenar('codigo') ?>">Código <?= iconeOrdenacao('codigo') ?></a></th>
                                 <th>Tipo</th>
                                 <th>Descrição</th>
                                 <th>Preço Unitário</th>
@@ -588,8 +616,23 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <?php endif; ?>
                             </tr>
                         </thead>
+                        
                         <tbody>
-                            <?php foreach ($produtos as $p): ?>
+                            
+                            <?php 
+                        
+                            $ordem = $_GET['ordem'] ?? null;
+                            $direcao = $_GET['direcao'] ?? 'asc';
+                            
+                            if ($ordem && isset($produtos[0][$ordem])) {
+                                usort($produtos, function($a, $b) use ($ordem, $direcao) {
+                                    $res = $a[$ordem] <=> $b[$ordem];
+                                    return $direcao === 'asc' ? $res : -$res;
+                                });
+                            }
+                        
+                            
+                            foreach ($produtos as $p): ?>
                             <tr>
                                 <td class="product-name"><?= htmlspecialchars($p['nome']) ?></td>
                                 <td>
@@ -681,5 +724,7 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </main>
     </div>
+
+    
 </body>
 </html>
