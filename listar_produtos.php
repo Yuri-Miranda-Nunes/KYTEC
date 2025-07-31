@@ -604,8 +604,7 @@ function urlOrdenar($coluna) {
                         <thead>
                             <tr>
                             <th><a href="<?= urlOrdenar('nome') ?>">Nome <?= iconeOrdenacao('nome') ?></a></th>
-
-                                <th>Código</th>
+                            <th><a href="<?= urlOrdenar('codigo') ?>">Código <?= iconeOrdenacao('codigo') ?></a></th>
                                 <th>Tipo</th>
                                 <th>Descrição</th>
                                 <th>Preço Unitário</th>
