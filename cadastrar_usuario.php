@@ -609,6 +609,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 <?php endif; ?>
 
+                <!-- Fornecedores -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Fornecedores</div>
+                    <div class="nav-item">
+                        <a href="listar_fornecedores.php" class="nav-link active">
+                            <i class="fas fa-truck"></i>
+                            <span>Listar Fornecedores</span>
+                        </a>
+                    </div>
+                </div>
+
                 <!-- Usuários -->
                 <?php if (temPermissao('gerenciar_usuarios')): ?>
                     <div class="nav-section">
@@ -620,7 +631,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link active">
+                            <a href="cadastrar_usuario.php" class="nav-link">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>

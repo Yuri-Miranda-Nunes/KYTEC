@@ -13,7 +13,8 @@ if (!in_array('editar_produtos', $_SESSION['permissoes'] ?? [])) {
 }
 
 // Função para verificar permissões
-function temPermissao($permissao) {
+function temPermissao($permissao)
+{
     return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
@@ -32,17 +33,16 @@ $produto = null;
 
 try {
     $bd = new BancoDeDados();
-    
+
     // Buscar produto existente
     $stmt = $bd->pdo->prepare("SELECT * FROM produtos WHERE id_produto = ?");
     $stmt->execute([$produto_id]);
     $produto = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$produto) {
         $mensagem = "Produto não encontrado.";
         $tipo_mensagem = "error";
     }
-    
 } catch (Exception $e) {
     $mensagem = "Erro ao carregar produto: " . $e->getMessage();
     $tipo_mensagem = "error";
@@ -60,22 +60,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
         $estoque_minimo = intval($_POST['estoque_minimo'] ?? 0);
         $estoque_atual = intval($_POST['estoque_atual'] ?? 0);
         $ativo = isset($_POST['ativo']) ? 1 : 0;
-        
+
         if (empty($nome)) {
             throw new Exception("Nome do produto é obrigatório.");
         }
-        
+
         if (empty($codigo)) {
             throw new Exception("Código do produto é obrigatório.");
         }
-        
+
         // Verificar se código já existe para outro produto
         $stmt_check = $bd->pdo->prepare("SELECT COUNT(*) FROM produtos WHERE codigo = ? AND id_produto != ?");
         $stmt_check->execute([$codigo, $produto_id]);
         if ($stmt_check->fetchColumn() > 0) {
             throw new Exception("Código já existe para outro produto. Escolha outro código.");
         }
-        
+
         // Atualizar produto
         $sql = "UPDATE produtos SET 
                 nome = ?, 
@@ -88,11 +88,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
                 ativo = ?, 
                 atualizado_em = NOW() 
                 WHERE id_produto = ?";
-        
+
         $stmt = $bd->pdo->prepare($sql);
         $stmt->execute([
             $nome,
-            $codigo, 
+            $codigo,
             $descricao,
             $tipo,
             $preco_unitario,
@@ -101,18 +101,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
             $ativo,
             $produto_id
         ]);
-        
+
         $mensagem = "Produto atualizado com sucesso!";
         $tipo_mensagem = "success";
         header("Location: listar_produtos.php");
         exit;
 
-        
+
         // Recarregar dados do produto
         $stmt = $bd->pdo->prepare("SELECT * FROM produtos WHERE id_produto = ?");
         $stmt->execute([$produto_id]);
         $produto = $stmt->fetch(PDO::FETCH_ASSOC);
-        
     } catch (Exception $e) {
         $mensagem = "Erro: " . $e->getMessage();
         $tipo_mensagem = "error";
@@ -121,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -144,14 +144,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
             display: flex;
             min-height: 100vh;
         }
-        
+
         /* Sidebar */
         .sidebar {
             width: 280px;
             background: #1e293b;
             color: white;
             padding: 0;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             position: fixed;
             height: 100vh;
             overflow-y: auto;
@@ -233,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
             border-radius: 12px;
             padding: 20px 24px;
             margin-bottom: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -313,7 +313,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
             background: white;
             border-radius: 12px;
             padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             margin-bottom: 32px;
         }
 
@@ -358,7 +358,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
             color: #ef4444;
         }
 
-        .form-input, .form-select, .form-textarea {
+        .form-input,
+        .form-select,
+        .form-textarea {
             padding: 12px 16px;
             border: 1px solid #d1d5db;
             border-radius: 8px;
@@ -367,7 +369,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
             background: white;
         }
 
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -547,6 +551,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
         }
     </style>
 </head>
+
 <body>
     <div class="dashboard">
         <!-- Sidebar -->
@@ -554,7 +559,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
             <div class="sidebar-header">
                 <h2><i class="fas fa-boxes"></i> KYTEC</h2>
             </div>
-            
+
             <nav class="sidebar-nav">
                 <!-- Dashboard -->
                 <div class="nav-section">
@@ -568,36 +573,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
 
                 <!-- Produtos -->
                 <?php if (temPermissao('listar_produtos')): ?>
-                <div class="nav-section">
-                    <div class="nav-section-title">Produtos</div>
-                    <div class="nav-item">
-                        <a href="listar_produtos.php" class="nav-link">
-                            <i class="fas fa-list"></i>
-                            <span>Listar Produtos</span>
-                        </a>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Produtos</div>
+                        <div class="nav-item">
+                            <a href="listar_produtos.php" class="nav-link">
+                                <i class="fas fa-list"></i>
+                                <span>Listar Produtos</span>
+                            </a>
+                        </div>
+                        <?php if (temPermissao('cadastrar_produtos')): ?>
+                            <div class="nav-item">
+                                <a href="cadastrar_prod.php" class="nav-link">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Cadastrar Produto</span>
+                                </a>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                    <?php if (temPermissao('cadastrar_produtos')): ?>
-                    <div class="nav-item">
-                        <a href="cadastrar_prod.php" class="nav-link">
-                            <i class="fas fa-plus"></i>
-                            <span>Cadastrar Produto</span>
-                        </a>
-                    </div>
-                    <?php endif; ?>
-                </div>
                 <?php endif; ?>
+
+                <!-- Fornecedores -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Fornecedores</div>
+                    <div class="nav-item">
+                        <a href="listar_fornecedores.php" class="nav-link active">
+                            <i class="fas fa-truck"></i>
+                            <span>Listar Fornecedores</span>
+                        </a>
+                    </div>
+                </div>
 
                 <!-- Usuários -->
                 <?php if (temPermissao('gerenciar_usuarios')): ?>
-                <div class="nav-section">
-                    <div class="nav-section-title">Usuários</div>
-                    <div class="nav-item">
-                        <a href="listar_usuarios.php" class="nav-link">
-                            <i class="fas fa-users"></i>
-                            <span>Listar Usuários</span>
-                        </a>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Usuários</div>
+                        <div class="nav-item">
+                            <a href="listar_usuarios.php" class="nav-link">
+                                <i class="fas fa-users"></i>
+                                <span>Listar Usuários</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="cadastrar_usuario.php" class="nav-link">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Cadastrar Usuário</span>
+                            </a>
+                        </div>
                     </div>
-                </div>
                 <?php endif; ?>
 
                 <!-- Sistema -->
@@ -646,256 +668,256 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
 
             <!-- Messages -->
             <?php if (!empty($mensagem)): ?>
-            <div class="message <?= $tipo_mensagem ?>">
-                <i class="fas fa-<?= $tipo_mensagem === 'success' ? 'check-circle' : 'exclamation-circle' ?>"></i>
-                <?= htmlspecialchars($mensagem) ?>
-            </div>
+                <div class="message <?= $tipo_mensagem ?>">
+                    <i class="fas fa-<?= $tipo_mensagem === 'success' ? 'check-circle' : 'exclamation-circle' ?>"></i>
+                    <?= htmlspecialchars($mensagem) ?>
+                </div>
             <?php endif; ?>
 
             <?php if ($produto): ?>
-            <!-- Product Info -->
-            <div class="product-info">
-                <h3>
-                    <i class="fas fa-info-circle"></i>
-                    Informações Atuais do Produto
-                </h3>
-                <div class="product-info-grid">
-                    <div class="product-info-item">
-                        <span class="product-info-label">ID:</span>
-                        <span class="product-info-value">#<?= $produto['id_produto'] ?></span>
-                    </div>
-                    <div class="product-info-item">
-                        <span class="product-info-label">Criado em:</span>
-                        <span class="product-info-value">
-                            <?= $produto['criado_em'] ? date('d/m/Y H:i', strtotime($produto['criado_em'])) : 'N/A' ?>
-                        </span>
-                    </div>
-                    <?php if ($produto['atualizado_em']): ?>
-                    <div class="product-info-item">
-                        <span class="product-info-label">Última atualização:</span>
-                        <span class="product-info-value">
-                            <?= date('d/m/Y H:i', strtotime($produto['atualizado_em'])) ?>
-                        </span>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <!-- Form Section -->
-            <div class="form-section">
-                <h2 class="section-title">
-                    <i class="fas fa-edit"></i>
-                    Editar Informações do Produto
-                </h2>
-                
-                <form method="POST" action="">
-                    <div class="form-grid">
-                        <!-- Nome -->
-                        <div class="form-group">
-                            <label class="form-label" for="nome">
-                                Nome do Produto <span class="required">*</span>
-                            </label>
-                            <input type="text" 
-                                   id="nome" 
-                                   name="nome" 
-                                   class="form-input" 
-                                   value="<?= htmlspecialchars($produto['nome']) ?>"
-                                   required 
-                                   placeholder="Ex: Mouse Gamer XYZ">
-                            <div class="input-hint">Nome que identificará o produto no sistema</div>
+                <!-- Product Info -->
+                <div class="product-info">
+                    <h3>
+                        <i class="fas fa-info-circle"></i>
+                        Informações Atuais do Produto
+                    </h3>
+                    <div class="product-info-grid">
+                        <div class="product-info-item">
+                            <span class="product-info-label">ID:</span>
+                            <span class="product-info-value">#<?= $produto['id_produto'] ?></span>
                         </div>
-
-                        <!-- Código -->
-                        <div class="form-group">
-                            <label class="form-label" for="codigo">
-                                Código do Produto <span class="required">*</span>
-                            </label>
-                            <input type="text" 
-                                   id="codigo" 
-                                   name="codigo" 
-                                   class="form-input" 
-                                   value="<?= htmlspecialchars($produto['codigo']) ?>"
-                                   required 
-                                   placeholder="Ex: MGX001">
-                            <div class="input-hint">Código único para identificação</div>
+                        <div class="product-info-item">
+                            <span class="product-info-label">Criado em:</span>
+                            <span class="product-info-value">
+                                <?= $produto['criado_em'] ? date('d/m/Y H:i', strtotime($produto['criado_em'])) : 'N/A' ?>
+                            </span>
                         </div>
-
-                        <!-- Tipo -->
-                        <div class="form-group">
-                            <label class="form-label" for="tipo">
-                                Tipo do Produto
-                            </label>
-                            <select id="tipo" name="tipo" class="form-select">
-                                <option value="acabado" <?= $produto['tipo'] === 'acabado' ? 'selected' : '' ?>>
-                                    Produto Acabado
-                                </option>
-                                <option value="matéria-prima" <?= $produto['tipo'] === 'matéria-prima' ? 'selected' : '' ?>>
-                                    Matéria-prima
-                                </option>
-                                <option value="outro" <?= $produto['tipo'] === 'outro' ? 'selected' : '' ?>>
-                                    Outro
-                                </option>
-                            </select>
-                            <div class="input-hint">Categoria do tipo de produto</div>
-                        </div>
-
-                        <!-- Preço Unitário -->
-                        <div class="form-group">
-                            <label class="form-label" for="preco_unitario">
-                                Preço Unitário (R$)
-                            </label>
-                            <input type="number" 
-                                   id="preco_unitario" 
-                                   name="preco_unitario" 
-                                   class="form-input" 
-                                   step="0.01" 
-                                   min="0"
-                                   value="<?= number_format($produto['preco_unitario'], 2, '.', '') ?>"
-                                   placeholder="0,00">
-                            <div class="input-hint">Preço de custo do produto</div>
-                        </div>
-
-                        <!-- Estoque Mínimo -->
-                        <div class="form-group">
-                            <label class="form-label" for="estoque_minimo">
-                                Estoque Mínimo
-                            </label>
-                            <input type="number" 
-                                   id="estoque_minimo" 
-                                   name="estoque_minimo" 
-                                   class="form-input" 
-                                   min="0"
-                                   value="<?= $produto['estoque_minimo'] ?>"
-                                   placeholder="0">
-                            <div class="input-hint">Quantidade mínima em estoque antes do alerta</div>
-                        </div>
-
-                        <!-- Estoque Atual -->
-                        <div class="form-group">
-                            <label class="form-label" for="estoque_atual">
-                                Estoque Atual
-                            </label>
-                            <input type="number" 
-                                   id="estoque_atual" 
-                                   name="estoque_atual" 
-                                   class="form-input" 
-                                   min="0"
-                                   value="<?= $produto['estoque_atual'] ?>"
-                                   placeholder="0">
-                            <div class="input-hint">Quantidade atual disponível em estoque</div>
-                        </div>
-
-                        <!-- Descrição -->
-                        <div class="form-group full-width">
-                            <label class="form-label" for="descricao">
-                                Descrição
-                            </label>
-                            <textarea id="descricao" 
-                                      name="descricao" 
-                                      class="form-textarea" 
-                                      placeholder="Descreva as características do produto..."><?= htmlspecialchars($produto['descricao']) ?></textarea>
-                            <div class="input-hint">Informações adicionais sobre o produto</div>
-                        </div>
-
-                        <!-- Ativo -->
-                        <div class="form-group">
-                            <label class="form-label">Status</label>
-                            <div class="checkbox-group">
-                                <input type="checkbox" 
-                                       id="ativo" 
-                                       name="ativo" 
-                                       class="checkbox-input" 
-                                       <?= $produto['ativo'] ? 'checked' : '' ?>>
-                                <label for="ativo" class="checkbox-label">
-                                    Produto ativo no sistema
-                                </label>
+                        <?php if ($produto['atualizado_em']): ?>
+                            <div class="product-info-item">
+                                <span class="product-info-label">Última atualização:</span>
+                                <span class="product-info-value">
+                                    <?= date('d/m/Y H:i', strtotime($produto['atualizado_em'])) ?>
+                                </span>
                             </div>
-                            <div class="input-hint">Produtos inativos não aparecem nas listagens</div>
-                        </div>
+                        <?php endif; ?>
                     </div>
-
-                    <!-- Form Actions -->
-                    <div class="form-actions">
-                        <a href="listar_produtos.php" class="btn btn-secondary">
-                            <i class="fas fa-times"></i>
-                            Cancelar
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i>
-                            Salvar Alterações
-                        </button>
-                    </div>
-                </form>
-            </div>
-            <?php else: ?>
-            <!-- Produto não encontrado -->
-            <div class="form-section">
-                <div style="text-align: center; padding: 40px; color: #64748b;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 16px; color: #f59e0b;"></i>
-                    <h3 style="margin-bottom: 8px; color: #374151;">Produto não encontrado</h3>
-                    <p style="margin-bottom: 24px;">O produto solicitado não foi encontrado ou você não tem permissão para acessá-lo.</p>
-                    <a href="listar_produtos.php" class="btn btn-primary">
-                        <i class="fas fa-arrow-left"></i>
-                        Voltar à Lista
-                    </a>
                 </div>
-            </div>
+
+                <!-- Form Section -->
+                <div class="form-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-edit"></i>
+                        Editar Informações do Produto
+                    </h2>
+
+                    <form method="POST" action="">
+                        <div class="form-grid">
+                            <!-- Nome -->
+                            <div class="form-group">
+                                <label class="form-label" for="nome">
+                                    Nome do Produto <span class="required">*</span>
+                                </label>
+                                <input type="text"
+                                    id="nome"
+                                    name="nome"
+                                    class="form-input"
+                                    value="<?= htmlspecialchars($produto['nome']) ?>"
+                                    required
+                                    placeholder="Ex: Mouse Gamer XYZ">
+                                <div class="input-hint">Nome que identificará o produto no sistema</div>
+                            </div>
+
+                            <!-- Código -->
+                            <div class="form-group">
+                                <label class="form-label" for="codigo">
+                                    Código do Produto <span class="required">*</span>
+                                </label>
+                                <input type="text"
+                                    id="codigo"
+                                    name="codigo"
+                                    class="form-input"
+                                    value="<?= htmlspecialchars($produto['codigo']) ?>"
+                                    required
+                                    placeholder="Ex: MGX001">
+                                <div class="input-hint">Código único para identificação</div>
+                            </div>
+
+                            <!-- Tipo -->
+                            <div class="form-group">
+                                <label class="form-label" for="tipo">
+                                    Tipo do Produto
+                                </label>
+                                <select id="tipo" name="tipo" class="form-select">
+                                    <option value="acabado" <?= $produto['tipo'] === 'acabado' ? 'selected' : '' ?>>
+                                        Produto Acabado
+                                    </option>
+                                    <option value="matéria-prima" <?= $produto['tipo'] === 'matéria-prima' ? 'selected' : '' ?>>
+                                        Matéria-prima
+                                    </option>
+                                    <option value="outro" <?= $produto['tipo'] === 'outro' ? 'selected' : '' ?>>
+                                        Outro
+                                    </option>
+                                </select>
+                                <div class="input-hint">Categoria do tipo de produto</div>
+                            </div>
+
+                            <!-- Preço Unitário -->
+                            <div class="form-group">
+                                <label class="form-label" for="preco_unitario">
+                                    Preço Unitário (R$)
+                                </label>
+                                <input type="number"
+                                    id="preco_unitario"
+                                    name="preco_unitario"
+                                    class="form-input"
+                                    step="0.01"
+                                    min="0"
+                                    value="<?= number_format($produto['preco_unitario'], 2, '.', '') ?>"
+                                    placeholder="0,00">
+                                <div class="input-hint">Preço de custo do produto</div>
+                            </div>
+
+                            <!-- Estoque Mínimo -->
+                            <div class="form-group">
+                                <label class="form-label" for="estoque_minimo">
+                                    Estoque Mínimo
+                                </label>
+                                <input type="number"
+                                    id="estoque_minimo"
+                                    name="estoque_minimo"
+                                    class="form-input"
+                                    min="0"
+                                    value="<?= $produto['estoque_minimo'] ?>"
+                                    placeholder="0">
+                                <div class="input-hint">Quantidade mínima em estoque antes do alerta</div>
+                            </div>
+
+                            <!-- Estoque Atual -->
+                            <div class="form-group">
+                                <label class="form-label" for="estoque_atual">
+                                    Estoque Atual
+                                </label>
+                                <input type="number"
+                                    id="estoque_atual"
+                                    name="estoque_atual"
+                                    class="form-input"
+                                    min="0"
+                                    value="<?= $produto['estoque_atual'] ?>"
+                                    placeholder="0">
+                                <div class="input-hint">Quantidade atual disponível em estoque</div>
+                            </div>
+
+                            <!-- Descrição -->
+                            <div class="form-group full-width">
+                                <label class="form-label" for="descricao">
+                                    Descrição
+                                </label>
+                                <textarea id="descricao"
+                                    name="descricao"
+                                    class="form-textarea"
+                                    placeholder="Descreva as características do produto..."><?= htmlspecialchars($produto['descricao']) ?></textarea>
+                                <div class="input-hint">Informações adicionais sobre o produto</div>
+                            </div>
+
+                            <!-- Ativo -->
+                            <div class="form-group">
+                                <label class="form-label">Status</label>
+                                <div class="checkbox-group">
+                                    <input type="checkbox"
+                                        id="ativo"
+                                        name="ativo"
+                                        class="checkbox-input"
+                                        <?= $produto['ativo'] ? 'checked' : '' ?>>
+                                    <label for="ativo" class="checkbox-label">
+                                        Produto ativo no sistema
+                                    </label>
+                                </div>
+                                <div class="input-hint">Produtos inativos não aparecem nas listagens</div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="form-actions">
+                            <a href="listar_produtos.php" class="btn btn-secondary">
+                                <i class="fas fa-times"></i>
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i>
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            <?php else: ?>
+                <!-- Produto não encontrado -->
+                <div class="form-section">
+                    <div style="text-align: center; padding: 40px; color: #64748b;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 16px; color: #f59e0b;"></i>
+                        <h3 style="margin-bottom: 8px; color: #374151;">Produto não encontrado</h3>
+                        <p style="margin-bottom: 24px;">O produto solicitado não foi encontrado ou você não tem permissão para acessá-lo.</p>
+                        <a href="listar_produtos.php" class="btn btn-primary">
+                            <i class="fas fa-arrow-left"></i>
+                            Voltar à Lista
+                        </a>
+                    </div>
+                </div>
             <?php endif; ?>
         </main>
     </div>
 
     <script>
         <?php if ($produto): ?>
-        // Auto-focus no primeiro campo
-        document.getElementById('nome').focus();
+            // Auto-focus no primeiro campo
+            document.getElementById('nome').focus();
 
-        // Formatting para campos de preço
-        document.getElementById('preco_unitario').addEventListener('input', function(e) {
-            let value = e.target.value;
-            if (value < 0) {
-                e.target.value = 0;
-            }
-        });
+            // Formatting para campos de preço
+            document.getElementById('preco_unitario').addEventListener('input', function(e) {
+                let value = e.target.value;
+                if (value < 0) {
+                    e.target.value = 0;
+                }
+            });
 
-        // Validação de estoque
-        document.getElementById('estoque_atual').addEventListener('input', function(e) {
-            let value = e.target.value;
-            if (value < 0) {
-                e.target.value = 0;
-            }
-        });
+            // Validação de estoque
+            document.getElementById('estoque_atual').addEventListener('input', function(e) {
+                let value = e.target.value;
+                if (value < 0) {
+                    e.target.value = 0;
+                }
+            });
 
-        document.getElementById('estoque_minimo').addEventListener('input', function(e) {
-            let value = e.target.value;
-            if (value < 0) {
-                e.target.value = 0;
-            }
-        });
+            document.getElementById('estoque_minimo').addEventListener('input', function(e) {
+                let value = e.target.value;
+                if (value < 0) {
+                    e.target.value = 0;
+                }
+            });
 
-        // Validação do formulário
-document.querySelector('form').addEventListener('submit', function(e) {
-    const nome = document.getElementById('nome').value.trim();
-    const codigo = document.getElementById('codigo').value.trim();
-    
-    if (!nome) {
-        alert('Nome do produto é obrigatório.');
-        e.preventDefault();
-        document.getElementById('nome').focus();
-        return;
-    }
-    
-    if (!codigo) {
-        alert('Código do produto é obrigatório.');
-        e.preventDefault();
-        document.getElementById('codigo').focus();
-        return;
-    }
-    
-    // Confirmação antes de salvar
-    if (!confirm('Tem certeza que deseja salvar as alterações?')) {
-        e.preventDefault();
-        return;
-    }
-});
+            // Validação do formulário
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const nome = document.getElementById('nome').value.trim();
+                const codigo = document.getElementById('codigo').value.trim();
+
+                if (!nome) {
+                    alert('Nome do produto é obrigatório.');
+                    e.preventDefault();
+                    document.getElementById('nome').focus();
+                    return;
+                }
+
+                if (!codigo) {
+                    alert('Código do produto é obrigatório.');
+                    e.preventDefault();
+                    document.getElementById('codigo').focus();
+                    return;
+                }
+
+                // Confirmação antes de salvar
+                if (!confirm('Tem certeza que deseja salvar as alterações?')) {
+                    e.preventDefault();
+                    return;
+                }
+            });
         <?php endif; ?>
     </script>

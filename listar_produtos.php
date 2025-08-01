@@ -2,18 +2,19 @@
 session_start();
 
 if (!in_array('listar_produtos', $_SESSION['permissoes'])) {
-  echo "Acesso negado.";
-  exit;
+    echo "Acesso negado.";
+    exit;
 }
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-  header("Location: login.php");
-  exit;
+    header("Location: login.php");
+    exit;
 }
 
 // Função para verificar permissões
-function temPermissao($permissao) {
-  return in_array($permissao, $_SESSION['permissoes'] ?? []);
+function temPermissao($permissao)
+{
+    return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
 require_once 'conexao.php';
@@ -38,13 +39,15 @@ $sql = "SELECT * FROM produtos ORDER BY {$ordem} {$direcao}";
 $stmt = $bd->pdo->query($sql);
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-function novaDirecao($coluna) {
+function novaDirecao($coluna)
+{
     $ordemAtual = $_GET['ordem'] ?? '';
     $direcaoAtual = $_GET['direcao'] ?? 'asc';
     return ($ordemAtual === $coluna && $direcaoAtual === 'asc') ? 'desc' : 'asc';
 }
 
-function iconeOrdenacao($coluna) {
+function iconeOrdenacao($coluna)
+{
     $ordemAtual = $_GET['ordem'] ?? '';
     $direcaoAtual = $_GET['direcao'] ?? 'asc';
     if ($ordemAtual === $coluna) {
@@ -53,7 +56,8 @@ function iconeOrdenacao($coluna) {
     return '';
 }
 
-function urlOrdenar($coluna) {
+function urlOrdenar($coluna)
+{
     $direcao = novaDirecao($coluna);
     $query = $_GET;
     $query['ordem'] = $coluna;
@@ -66,6 +70,7 @@ function urlOrdenar($coluna) {
 
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -89,14 +94,14 @@ function urlOrdenar($coluna) {
             display: flex;
             min-height: 100vh;
         }
-        
+
         /* Sidebar */
         .sidebar {
             width: 280px;
             background: #1e293b;
             color: white;
             padding: 0;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             position: fixed;
             height: 100vh;
             overflow-y: auto;
@@ -178,7 +183,7 @@ function urlOrdenar($coluna) {
             border-radius: 12px;
             padding: 20px 24px;
             margin-bottom: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -258,13 +263,15 @@ function urlOrdenar($coluna) {
             background: white;
             border-radius: 12px;
             padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             margin-bottom: 32px;
         }
-        a{
+
+        a {
             text-decoration: none;
             color: inherit;
         }
+
         .section-title {
             font-size: 1.25rem;
             font-weight: 600;
@@ -501,6 +508,7 @@ function urlOrdenar($coluna) {
         }
     </style>
 </head>
+
 <body>
     <div class="dashboard">
         <!-- Sidebar -->
@@ -508,7 +516,7 @@ function urlOrdenar($coluna) {
             <div class="sidebar-header">
                 <h2><i class="fas fa-boxes"></i> KYTEC</h2>
             </div>
-            
+
             <nav class="sidebar-nav">
                 <!-- Dashboard -->
                 <div class="nav-section">
@@ -522,36 +530,53 @@ function urlOrdenar($coluna) {
 
                 <!-- Produtos -->
                 <?php if (temPermissao('listar_produtos')): ?>
-                <div class="nav-section">
-                    <div class="nav-section-title">Produtos</div>
-                    <div class="nav-item">
-                        <a href="listar_produtos.php" class="nav-link active">
-                            <i class="fas fa-list"></i>
-                            <span>Listar Produtos</span>
-                        </a>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Produtos</div>
+                        <div class="nav-item">
+                            <a href="listar_produtos.php" class="nav-link">
+                                <i class="fas fa-list"></i>
+                                <span>Listar Produtos</span>
+                            </a>
+                        </div>
+                        <?php if (temPermissao('cadastrar_produtos')): ?>
+                            <div class="nav-item">
+                                <a href="cadastrar_prod.php" class="nav-link">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Cadastrar Produto</span>
+                                </a>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                    <?php if (temPermissao('cadastrar_produtos')): ?>
-                    <div class="nav-item">
-                        <a href="cadastrar_prod.php" class="nav-link">
-                            <i class="fas fa-plus"></i>
-                            <span>Cadastrar Produto</span>
-                        </a>
-                    </div>
-                    <?php endif; ?>
-                </div>
                 <?php endif; ?>
+
+                <!-- Fornecedores -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Fornecedores</div>
+                    <div class="nav-item">
+                        <a href="listar_fornecedores.php" class="nav-link active">
+                            <i class="fas fa-truck"></i>
+                            <span>Listar Fornecedores</span>
+                        </a>
+                    </div>
+                </div>
 
                 <!-- Usuários -->
                 <?php if (temPermissao('gerenciar_usuarios')): ?>
-                <div class="nav-section">
-                    <div class="nav-section-title">Usuários</div>
-                    <div class="nav-item">
-                        <a href="listar_usuarios.php" class="nav-link">
-                            <i class="fas fa-users"></i>
-                            <span>Listar Usuários</span>
-                        </a>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Usuários</div>
+                        <div class="nav-item">
+                            <a href="listar_usuarios.php" class="nav-link">
+                                <i class="fas fa-users"></i>
+                                <span>Listar Usuários</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="cadastrar_usuario.php" class="nav-link">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Cadastrar Usuário</span>
+                            </a>
+                        </div>
                     </div>
-                </div>
                 <?php endif; ?>
 
                 <!-- Sistema -->
@@ -601,10 +626,10 @@ function urlOrdenar($coluna) {
             <!-- Action Buttons -->
             <div class="action-buttons">
                 <?php if (temPermissao('cadastrar_produtos')): ?>
-                <a href="cadastrar_prod.php" class="btn btn-primary">
-                    <i class="fas fa-plus"></i>
-                    Novo Produto
-                </a>
+                    <a href="cadastrar_prod.php" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Novo Produto
+                    </a>
                 <?php endif; ?>
             </div>
 
@@ -614,119 +639,121 @@ function urlOrdenar($coluna) {
                     <i class="fas fa-boxes"></i>
                     Produtos Cadastrados
                 </h2>
-                
+
                 <?php if (count($produtos) > 0): ?>
-                <div class="table-container">
-                    <table class="products-table">
-                        <thead>
-                            <tr>
-                                <th><a href="<?= urlOrdenar('nome') ?>">Nome <?= iconeOrdenacao('nome') ?></a></th>
-                                <th><a href="<?= urlOrdenar('codigo') ?>">Código <?= iconeOrdenacao('codigo') ?></a></th>
-                                <th><a href="<?= urlOrdenar('tipo') ?>">Tipo <?= iconeOrdenacao('tipo') ?></a></th>
-                                <th><a href="<?= urlOrdenar('descricao') ?>">Descrição <?= iconeOrdenacao('descricao') ?></a></th>
-                                <th><a href="<?= urlOrdenar('preco_unitario') ?>">Preço Unitário <?= iconeOrdenacao('preco_unitario') ?></a></th>
-                                <th><a href="<?= urlOrdenar('estoque_minimo') ?>">Estoque Mín. <?= iconeOrdenacao('estoque_minimo') ?></a></th>
-                                <th><a href="<?= urlOrdenar('estoque_atual') ?>">Estoque Atual <?= iconeOrdenacao('estoque_atual') ?></a></th>
-                                <th><a href="<?= urlOrdenar('ativo') ?>">Status <?= iconeOrdenacao('ativo') ?></a></th>
-                                <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
-                                <th>Ações</th>
-                                <?php endif; ?>
-                            </tr>
-                        </thead>
-                        
-                        <tbody>
-                            <?php foreach ($produtos as $p): ?>
-                            <tr>
-                                <td class="product-name"><?= htmlspecialchars($p['nome']) ?></td>
-                                <td>
-                                    <span class="product-code"><?= htmlspecialchars($p['codigo']) ?></span>
-                                </td>
-                                <td>
-                                    <?php 
-                                    $tipo = $p['tipo'];
-                                    $tipoClass = 'type-outro';
-                                    if ($tipo === 'acabado') $tipoClass = 'type-acabado';
-                                    elseif ($tipo === 'matéria-prima') $tipoClass = 'type-materia-prima';
-                                    ?>
-                                    <span class="type-badge <?= $tipoClass ?>">
-                                        <?= htmlspecialchars(ucfirst($tipo)) ?>
-                                    </span>
-                                </td>
-                                <td class="description-cell" title="<?= htmlspecialchars($p['descricao']) ?>">
-                                    <?= htmlspecialchars($p['descricao'] ?: 'Sem descrição') ?>
-                                </td>
-                                <td class="price">
-                                    R$ <?= number_format($p['preco_unitario'], 2, ',', '.') ?>
-                                </td>
-                                <td>
-                                    <span class="stock-badge stock-normal">
-                                        <?= $p['estoque_minimo'] ?> unid.
-                                    </span>
-                                </td>
-                                <td>
-                                    <?php 
-                                    $estoque = $p['estoque_atual'];
-                                    $estoqueMinimo = $p['estoque_minimo'] ?? 10;
-                                    $badgeClass = 'stock-normal';
-                                    
-                                    if ($estoque <= $estoqueMinimo) {
-                                        $badgeClass = 'stock-low';
-                                    } elseif ($estoque <= ($estoqueMinimo * 2)) {
-                                        $badgeClass = 'stock-medium';
-                                    }
-                                    ?>
-                                    <span class="stock-badge <?= $badgeClass ?>">
-                                        <?= $estoque ?> unid.
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="status-badge <?= $p['ativo'] ? 'status-ativo' : 'status-inativo' ?>">
-                                        <?= $p['ativo'] ? 'Ativo' : 'Inativo' ?>
-                                    </span>
-                                </td>
-                                <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
-                                <td>
-                                    <div style="display: flex; gap: 8px;">
-                                        <?php if (temPermissao('editar_produtos')): ?>
-                                        <a href="editar_produto.php?id=<?= $p['id_produto'] ?>" 
-                                           style="color: #3b82f6; font-size: 0.875rem; text-decoration: none;" 
-                                           title="Editar">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
+                    <div class="table-container">
+                        <table class="products-table">
+                            <thead>
+                                <tr>
+                                    <th><a href="<?= urlOrdenar('nome') ?>">Nome <?= iconeOrdenacao('nome') ?></a></th>
+                                    <th><a href="<?= urlOrdenar('codigo') ?>">Código <?= iconeOrdenacao('codigo') ?></a></th>
+                                    <th><a href="<?= urlOrdenar('tipo') ?>">Tipo <?= iconeOrdenacao('tipo') ?></a></th>
+                                    <th><a href="<?= urlOrdenar('descricao') ?>">Descrição <?= iconeOrdenacao('descricao') ?></a></th>
+                                    <th><a href="<?= urlOrdenar('preco_unitario') ?>">Preço Unitário <?= iconeOrdenacao('preco_unitario') ?></a></th>
+                                    <th><a href="<?= urlOrdenar('estoque_minimo') ?>">Estoque Mín. <?= iconeOrdenacao('estoque_minimo') ?></a></th>
+                                    <th><a href="<?= urlOrdenar('estoque_atual') ?>">Estoque Atual <?= iconeOrdenacao('estoque_atual') ?></a></th>
+                                    <th><a href="<?= urlOrdenar('ativo') ?>">Status <?= iconeOrdenacao('ativo') ?></a></th>
+                                    <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
+                                        <th>Ações</th>
+                                    <?php endif; ?>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <?php foreach ($produtos as $p): ?>
+                                    <tr>
+                                        <td class="product-name"><?= htmlspecialchars($p['nome']) ?></td>
+                                        <td>
+                                            <span class="product-code"><?= htmlspecialchars($p['codigo']) ?></span>
+                                        </td>
+                                        <td>
+                                            <?php
+                                            $tipo = $p['tipo'];
+                                            $tipoClass = 'type-outro';
+                                            if ($tipo === 'acabado') $tipoClass = 'type-acabado';
+                                            elseif ($tipo === 'matéria-prima') $tipoClass = 'type-materia-prima';
+                                            ?>
+                                            <span class="type-badge <?= $tipoClass ?>">
+                                                <?= htmlspecialchars(ucfirst($tipo)) ?>
+                                            </span>
+                                        </td>
+                                        <td class="description-cell" title="<?= htmlspecialchars($p['descricao']) ?>">
+                                            <?= htmlspecialchars($p['descricao'] ?: 'Sem descrição') ?>
+                                        </td>
+                                        <td class="price">
+                                            R$ <?= number_format($p['preco_unitario'], 2, ',', '.') ?>
+                                        </td>
+                                        <td>
+                                            <span class="stock-badge stock-normal">
+                                                <?= $p['estoque_minimo'] ?> unid.
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?php
+                                            $estoque = $p['estoque_atual'];
+                                            $estoqueMinimo = $p['estoque_minimo'] ?? 10;
+                                            $badgeClass = 'stock-normal';
+
+                                            if ($estoque <= $estoqueMinimo) {
+                                                $badgeClass = 'stock-low';
+                                            } elseif ($estoque <= ($estoqueMinimo * 2)) {
+                                                $badgeClass = 'stock-medium';
+                                            }
+                                            ?>
+                                            <span class="stock-badge <?= $badgeClass ?>">
+                                                <?= $estoque ?> unid.
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge <?= $p['ativo'] ? 'status-ativo' : 'status-inativo' ?>">
+                                                <?= $p['ativo'] ? 'Ativo' : 'Inativo' ?>
+                                            </span>
+                                        </td>
+                                        <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
+                                            <td>
+                                                <div style="display: flex; gap: 8px;">
+                                                    <?php if (temPermissao('editar_produtos')): ?>
+                                                        <a href="editar_produto.php?id=<?= $p['id_produto'] ?>"
+                                                            style="color: #3b82f6; font-size: 0.875rem; text-decoration: none;"
+                                                            title="Editar">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                    <?php endif; ?>
+                                                    <?php if (temPermissao('excluir_produtos')): ?>
+                                                        <a href="excluir_produto.php?id=<?= $p['id_produto'] ?>"
+                                                            style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
+                                                            title="Excluir"
+                                                            onclick="return confirm('Tem certeza que deseja excluir este produto?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
                                         <?php endif; ?>
-                                        <?php if (temPermissao('excluir_produtos')): ?>
-                                        <a href="excluir_produto.php?id=<?= $p['id_produto'] ?>" 
-                                           style="color: #ef4444; font-size: 0.875rem; text-decoration: none;" 
-                                           title="Excluir"
-                                           onclick="return confirm('Tem certeza que deseja excluir este produto?')">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                                <?php endif; ?>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 <?php else: ?>
-                <div class="empty-state">
-                    <i class="fas fa-boxes"></i>
-                    <h3>Nenhum produto encontrado</h3>
-                    <p>Não há produtos cadastrados no sistema ainda.</p>
-                    <?php if (temPermissao('cadastrar_produtos')): ?>
-                    <br>
-                    <a href="cadastrar_prod.php" class="btn btn-primary">
-                        <i class="fas fa-plus"></i>
-                        Cadastrar Primeiro Produto
-                    </a>
-                    <?php endif; ?>
-                </div>
+                    <div class="empty-state">
+                        <i class="fas fa-boxes"></i>
+                        <h3>Nenhum produto encontrado</h3>
+                        <p>Não há produtos cadastrados no sistema ainda.</p>
+                        <?php if (temPermissao('cadastrar_produtos')): ?>
+                            <br>
+                            <a href="cadastrar_prod.php" class="btn btn-primary">
+                                <i class="fas fa-plus"></i>
+                                Cadastrar Primeiro Produto
+                            </a>
+                        <?php endif; ?>
+                    </div>
                 <?php endif; ?>
             </div>
         </main>
     </div>
 </body>
+
 </html>
+
 </html>

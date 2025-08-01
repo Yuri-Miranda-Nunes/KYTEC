@@ -13,7 +13,8 @@ if (!in_array('cadastrar_produtos', $_SESSION['permissoes'] ?? [])) {
 }
 
 // Função para verificar permissões
-function temPermissao($permissao) {
+function temPermissao($permissao)
+{
     return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
@@ -26,7 +27,7 @@ $tipo_mensagem = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $bd = new BancoDeDados();
-        
+
         // Validar campos obrigatórios
         $nome = trim($_POST['nome'] ?? '');
         $codigo = trim($_POST['codigo'] ?? '');
@@ -36,30 +37,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $estoque_minimo = intval($_POST['estoque_minimo'] ?? 0);
         $estoque_atual = intval($_POST['estoque_atual'] ?? 0);
         $ativo = isset($_POST['ativo']) ? 1 : 0;
-        
+
         if (empty($nome)) {
             throw new Exception("Nome do produto é obrigatório.");
         }
-        
+
         if (empty($codigo)) {
             throw new Exception("Código do produto é obrigatório.");
         }
-        
+
         // Verificar se código já existe
         $stmt_check = $bd->pdo->prepare("SELECT COUNT(*) FROM produtos WHERE codigo = ?");
         $stmt_check->execute([$codigo]);
         if ($stmt_check->fetchColumn() > 0) {
             throw new Exception("Código já existe. Escolha outro código.");
         }
-        
+
         // Inserir produto
         $sql = "INSERT INTO produtos (nome, codigo, descricao, tipo, preco_unitario, estoque_minimo, estoque_atual, ativo, criado_em) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-        
+
         $stmt = $bd->pdo->prepare($sql);
         $stmt->execute([
             $nome,
-            $codigo, 
+            $codigo,
             $descricao,
             $tipo,
             $preco_unitario,
@@ -67,13 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $estoque_atual,
             $ativo
         ]);
-        
+
         $mensagem = "Produto cadastrado com sucesso!";
         $tipo_mensagem = "success";
-        
+
         // Limpar campos após sucesso
         $_POST = [];
-        
     } catch (Exception $e) {
         $mensagem = "Erro: " . $e->getMessage();
         $tipo_mensagem = "error";
@@ -82,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -105,14 +106,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             min-height: 100vh;
         }
-        
+
         /* Sidebar */
         .sidebar {
             width: 280px;
             background: #1e293b;
             color: white;
             padding: 0;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             position: fixed;
             height: 100vh;
             overflow-y: auto;
@@ -194,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 12px;
             padding: 20px 24px;
             margin-bottom: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -274,7 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: white;
             border-radius: 12px;
             padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             margin-bottom: 32px;
         }
 
@@ -319,7 +320,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #ef4444;
         }
 
-        .form-input, .form-select, .form-textarea {
+        .form-input,
+        .form-select,
+        .form-textarea {
             padding: 12px 16px;
             border: 1px solid #d1d5db;
             border-radius: 8px;
@@ -328,7 +331,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: white;
         }
 
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -467,6 +472,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     </style>
 </head>
+
 <body>
     <div class="dashboard">
         <!-- Sidebar -->
@@ -474,7 +480,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="sidebar-header">
                 <h2><i class="fas fa-boxes"></i> KYTEC</h2>
             </div>
-            
+
             <nav class="sidebar-nav">
                 <!-- Dashboard -->
                 <div class="nav-section">
@@ -488,36 +494,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <!-- Produtos -->
                 <?php if (temPermissao('listar_produtos')): ?>
-                <div class="nav-section">
-                    <div class="nav-section-title">Produtos</div>
-                    <div class="nav-item">
-                        <a href="listar_produtos.php" class="nav-link">
-                            <i class="fas fa-list"></i>
-                            <span>Listar Produtos</span>
-                        </a>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Produtos</div>
+                        <div class="nav-item">
+                            <a href="listar_produtos.php" class="nav-link">
+                                <i class="fas fa-list"></i>
+                                <span>Listar Produtos</span>
+                            </a>
+                        </div>
+                        <?php if (temPermissao('cadastrar_produtos')): ?>
+                            <div class="nav-item">
+                                <a href="cadastrar_prod.php" class="nav-link">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Cadastrar Produto</span>
+                                </a>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                    <?php if (temPermissao('cadastrar_produtos')): ?>
-                    <div class="nav-item">
-                        <a href="cadastrar_prod.php" class="nav-link active">
-                            <i class="fas fa-plus"></i>
-                            <span>Cadastrar Produto</span>
-                        </a>
-                    </div>
-                    <?php endif; ?>
-                </div>
                 <?php endif; ?>
+
+                <!-- Fornecedores -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Fornecedores</div>
+                    <div class="nav-item">
+                        <a href="listar_fornecedores.php" class="nav-link active">
+                            <i class="fas fa-truck"></i>
+                            <span>Listar Fornecedores</span>
+                        </a>
+                    </div>
+                </div>
 
                 <!-- Usuários -->
                 <?php if (temPermissao('gerenciar_usuarios')): ?>
-                <div class="nav-section">
-                    <div class="nav-section-title">Usuários</div>
-                    <div class="nav-item">
-                        <a href="listar_usuarios.php" class="nav-link">
-                            <i class="fas fa-users"></i>
-                            <span>Listar Usuários</span>
-                        </a>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Usuários</div>
+                        <div class="nav-item">
+                            <a href="listar_usuarios.php" class="nav-link">
+                                <i class="fas fa-users"></i>
+                                <span>Listar Usuários</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="cadastrar_usuario.php" class="nav-link">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Cadastrar Usuário</span>
+                            </a>
+                        </div>
                     </div>
-                </div>
                 <?php endif; ?>
 
                 <!-- Sistema -->
@@ -566,10 +589,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Messages -->
             <?php if (!empty($mensagem)): ?>
-            <div class="message <?= $tipo_mensagem ?>">
-                <i class="fas fa-<?= $tipo_mensagem === 'success' ? 'check-circle' : 'exclamation-circle' ?>"></i>
-                <?= htmlspecialchars($mensagem) ?>
-            </div>
+                <div class="message <?= $tipo_mensagem ?>">
+                    <i class="fas fa-<?= $tipo_mensagem === 'success' ? 'check-circle' : 'exclamation-circle' ?>"></i>
+                    <?= htmlspecialchars($mensagem) ?>
+                </div>
             <?php endif; ?>
 
             <!-- Form Section -->
@@ -578,7 +601,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <i class="fas fa-plus-circle"></i>
                     Informações do Produto
                 </h2>
-                
+
                 <form method="POST" action="">
                     <div class="form-grid">
                         <!-- Nome -->
@@ -586,13 +609,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label" for="nome">
                                 Nome do Produto <span class="required">*</span>
                             </label>
-                            <input type="text" 
-                                   id="nome" 
-                                   name="nome" 
-                                   class="form-input" 
-                                   value="<?= htmlspecialchars($_POST['nome'] ?? '') ?>"
-                                   required 
-                                   placeholder="Ex: Mouse Gamer XYZ">
+                            <input type="text"
+                                id="nome"
+                                name="nome"
+                                class="form-input"
+                                value="<?= htmlspecialchars($_POST['nome'] ?? '') ?>"
+                                required
+                                placeholder="Ex: Mouse Gamer XYZ">
                             <div class="input-hint">Nome que identificará o produto no sistema</div>
                         </div>
 
@@ -601,13 +624,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label" for="codigo">
                                 Código do Produto <span class="required">*</span>
                             </label>
-                            <input type="text" 
-                                   id="codigo" 
-                                   name="codigo" 
-                                   class="form-input" 
-                                   value="<?= htmlspecialchars($_POST['codigo'] ?? '') ?>"
-                                   required 
-                                   placeholder="Ex: MGX001">
+                            <input type="text"
+                                id="codigo"
+                                name="codigo"
+                                class="form-input"
+                                value="<?= htmlspecialchars($_POST['codigo'] ?? '') ?>"
+                                required
+                                placeholder="Ex: MGX001">
                             <div class="input-hint">Código único para identificação</div>
                         </div>
 
@@ -635,14 +658,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label" for="preco_unitario">
                                 Preço Unitário (R$)
                             </label>
-                            <input type="number" 
-                                   id="preco_unitario" 
-                                   name="preco_unitario" 
-                                   class="form-input" 
-                                   step="0.01" 
-                                   min="0"
-                                   value="<?= htmlspecialchars($_POST['preco_unitario'] ?? '') ?>"
-                                   placeholder="0,00">
+                            <input type="number"
+                                id="preco_unitario"
+                                name="preco_unitario"
+                                class="form-input"
+                                step="0.01"
+                                min="0"
+                                value="<?= htmlspecialchars($_POST['preco_unitario'] ?? '') ?>"
+                                placeholder="0,00">
                             <div class="input-hint">Preço de custo do produto</div>
                         </div>
 
@@ -651,13 +674,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label" for="estoque_minimo">
                                 Estoque Mínimo
                             </label>
-                            <input type="number" 
-                                   id="estoque_minimo" 
-                                   name="estoque_minimo" 
-                                   class="form-input" 
-                                   min="0"
-                                   value="<?= htmlspecialchars($_POST['estoque_minimo'] ?? '0') ?>"
-                                   placeholder="0">
+                            <input type="number"
+                                id="estoque_minimo"
+                                name="estoque_minimo"
+                                class="form-input"
+                                min="0"
+                                value="<?= htmlspecialchars($_POST['estoque_minimo'] ?? '0') ?>"
+                                placeholder="0">
                             <div class="input-hint">Quantidade mínima em estoque antes do alerta</div>
                         </div>
 
@@ -666,13 +689,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label" for="estoque_atual">
                                 Estoque Atual
                             </label>
-                            <input type="number" 
-                                   id="estoque_atual" 
-                                   name="estoque_atual" 
-                                   class="form-input" 
-                                   min="0"
-                                   value="<?= htmlspecialchars($_POST['estoque_atual'] ?? '0') ?>"
-                                   placeholder="0">
+                            <input type="number"
+                                id="estoque_atual"
+                                name="estoque_atual"
+                                class="form-input"
+                                min="0"
+                                value="<?= htmlspecialchars($_POST['estoque_atual'] ?? '0') ?>"
+                                placeholder="0">
                             <div class="input-hint">Quantidade atual disponível em estoque</div>
                         </div>
 
@@ -681,10 +704,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label" for="descricao">
                                 Descrição
                             </label>
-                            <textarea id="descricao" 
-                                      name="descricao" 
-                                      class="form-textarea" 
-                                      placeholder="Descreva as características do produto..."><?= htmlspecialchars($_POST['descricao'] ?? '') ?></textarea>
+                            <textarea id="descricao"
+                                name="descricao"
+                                class="form-textarea"
+                                placeholder="Descreva as características do produto..."><?= htmlspecialchars($_POST['descricao'] ?? '') ?></textarea>
                             <div class="input-hint">Informações adicionais sobre o produto</div>
                         </div>
 
@@ -692,11 +715,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="form-group">
                             <label class="form-label">Status</label>
                             <div class="checkbox-group">
-                                <input type="checkbox" 
-                                       id="ativo" 
-                                       name="ativo" 
-                                       class="checkbox-input" 
-                                       <?= (isset($_POST['ativo']) || !isset($_POST['nome'])) ? 'checked' : '' ?>>
+                                <input type="checkbox"
+                                    id="ativo"
+                                    name="ativo"
+                                    class="checkbox-input"
+                                    <?= (isset($_POST['ativo']) || !isset($_POST['nome'])) ? 'checked' : '' ?>>
                                 <label for="ativo" class="checkbox-label">
                                     Produto ativo no sistema
                                 </label>
@@ -752,14 +775,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         document.querySelector('form').addEventListener('submit', function(e) {
             const nome = document.getElementById('nome').value.trim();
             const codigo = document.getElementById('codigo').value.trim();
-            
+
             if (!nome) {
                 alert('Nome do produto é obrigatório.');
                 e.preventDefault();
                 document.getElementById('nome').focus();
                 return;
             }
-            
+
             if (!codigo) {
                 alert('Código do produto é obrigatório.');
                 e.preventDefault();
@@ -769,4 +792,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         });
     </script>
 </body>
+
 </html>

@@ -424,73 +424,90 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
   <div class="dashboard">
     <!-- Sidebar -->
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <h2><i class="fas fa-boxes"></i> KYTEC</h2>
-      </div>
-
-      <nav class="sidebar-nav">
-        <!-- Dashboard -->
-        <div class="nav-section">
-          <div class="nav-item">
-            <a href="index.php" class="nav-link">
-              <i class="fas fa-chart-line"></i>
-              <span>Dashboard</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- Produtos -->
-        <?php if (temPermissao('listar_produtos')): ?>
-          <div class="nav-section">
-            <div class="nav-section-title">Produtos</div>
-            <div class="nav-item">
-              <a href="listar_produtos.php" class="nav-link">
-                <i class="fas fa-list"></i>
-                <span>Listar Produtos</span>
-              </a>
+            <div class="sidebar-header">
+                <h2><i class="fas fa-boxes"></i> KYTEC</h2>
             </div>
-            <?php if (temPermissao('cadastrar_produtos')): ?>
-              <div class="nav-item">
-                <a href="cadastrar_prod.php" class="nav-link">
-                  <i class="fas fa-plus"></i>
-                  <span>Cadastrar Produto</span>
-                </a>
-              </div>
-            <?php endif; ?>
-          </div>
-        <?php endif; ?>
 
-        <!-- Usuários -->
-        <?php if (temPermissao('gerenciar_usuarios')): ?>
-          <div class="nav-section">
-            <div class="nav-section-title">Usuários</div>
-            <div class="nav-item">
-              <a href="listar_usuarios.php" class="nav-link active">
-                <i class="fas fa-users"></i>
-                <span>Listar Usuários</span>
-              </a>
-            </div>
-          </div>
-        <?php endif; ?>
+            <nav class="sidebar-nav">
+                <!-- Dashboard -->
+                <div class="nav-section">
+                    <div class="nav-item">
+                        <a href="index.php" class="nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                </div>
 
-        <!-- Sistema -->
-        <div class="nav-section">
-          <div class="nav-section-title">Sistema</div>
-          <div class="nav-item">
-            <a href="perfil.php" class="nav-link">
-              <i class="fas fa-user-circle"></i>
-              <span>Meu Perfil</span>
-            </a>
-          </div>
-          <div class="nav-item">
-            <a href="logout.php" class="nav-link">
-              <i class="fas fa-sign-out-alt"></i>
-              <span>Sair</span>
-            </a>
-          </div>
-        </div>
-      </nav>
-    </aside>
+                <!-- Produtos -->
+                <?php if (temPermissao('listar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Produtos</div>
+                        <div class="nav-item">
+                            <a href="listar_produtos.php" class="nav-link">
+                                <i class="fas fa-list"></i>
+                                <span>Listar Produtos</span>
+                            </a>
+                        </div>
+                        <?php if (temPermissao('cadastrar_produtos')): ?>
+                            <div class="nav-item">
+                                <a href="cadastrar_prod.php" class="nav-link">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Cadastrar Produto</span>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Fornecedores -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Fornecedores</div>
+                    <div class="nav-item">
+                        <a href="listar_fornecedores.php" class="nav-link active">
+                            <i class="fas fa-truck"></i>
+                            <span>Listar Fornecedores</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Usuários -->
+                <?php if (temPermissao('gerenciar_usuarios')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Usuários</div>
+                        <div class="nav-item">
+                            <a href="listar_usuarios.php" class="nav-link">
+                                <i class="fas fa-users"></i>
+                                <span>Listar Usuários</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="cadastrar_usuario.php" class="nav-link">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Cadastrar Usuário</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Sistema -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Sistema</div>
+                    <div class="nav-item">
+                        <a href="perfil.php" class="nav-link">
+                            <i class="fas fa-user-circle"></i>
+                            <span>Meu Perfil</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="logout.php" class="nav-link">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Sair</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </aside>
 
     <!-- Main Content -->
     <main class="main-content">
