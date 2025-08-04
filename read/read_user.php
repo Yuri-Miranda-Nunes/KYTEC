@@ -25,7 +25,7 @@ function temPermissao($permissao)
   return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 $bd = new BancoDeDados();
 $sql = "SELECT * FROM usuarios ORDER BY nome ASC";
 $stmt = $bd->pdo->query($sql);
@@ -432,7 +432,7 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link">
+                        <a href="../index.php" class="nav-link">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -603,7 +603,7 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                           title="Editar">
                           <i class="fas fa-edit"></i>
                         </a>
-                        <a href="delete_user.php?id=<?= $u['id'] ?>"
+                        <a href="../delete/delete_user.php?= $u['id'] ?>"
                           style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
                           title="Excluir"
                           onclick="return confirm('Tem certeza que deseja excluir este usuário?')">

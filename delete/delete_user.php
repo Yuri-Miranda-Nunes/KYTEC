@@ -3,7 +3,7 @@ session_start();
 
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -13,11 +13,11 @@ if (!in_array('gerenciar_usuarios', $_SESSION['permissoes'])) {
     exit;
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 // Verifica se foi passado o ID do usuário
 if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: listar_usuarios.php?erro=id_invalido");
+    header("Location: ../read/read_user.php?erro=id_invalido");
     exit;
 }
 
@@ -26,7 +26,7 @@ $bd = new BancoDeDados();
 
 // Impedir que o usuário exclua a si mesmo
 if ($id_usuario === $_SESSION['usuario_id']) {
-    header("Location: listar_usuarios.php?erro=nao_pode_excluir_proprio_usuario");
+    header("Location: ../read/read_user.php?erro=nao_pode_excluir_proprio_usuario");
     exit;
 }
 
