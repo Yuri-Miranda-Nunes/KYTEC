@@ -18,15 +18,13 @@ function temPermissao($permissao) {
 }
 
 require_once 'conexao.php';
-
-// Processar formulário quando enviado
-$mensagem = '';
-$tipo_mensagem = '';
+require_once 'log_manager.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $bd = new BancoDeDados();
-        
+        $logManager = new LogManager($bd->pdo);
+
         // Validar campos obrigatórios
         $nome = trim($_POST['nome'] ?? '');
         $codigo = trim($_POST['codigo'] ?? '');
@@ -36,30 +34,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $estoque_minimo = intval($_POST['estoque_minimo'] ?? 0);
         $estoque_atual = intval($_POST['estoque_atual'] ?? 0);
         $ativo = isset($_POST['ativo']) ? 1 : 0;
-        
+
         if (empty($nome)) {
             throw new Exception("Nome do produto é obrigatório.");
         }
-        
+
         if (empty($codigo)) {
             throw new Exception("Código do produto é obrigatório.");
         }
-        
+
         // Verificar se código já existe
         $stmt_check = $bd->pdo->prepare("SELECT COUNT(*) FROM produtos WHERE codigo = ?");
         $stmt_check->execute([$codigo]);
         if ($stmt_check->fetchColumn() > 0) {
             throw new Exception("Código já existe. Escolha outro código.");
         }
-        
+
         // Inserir produto
         $sql = "INSERT INTO produtos (nome, codigo, descricao, tipo, preco_unitario, estoque_minimo, estoque_atual, ativo, criado_em) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-        
+
         $stmt = $bd->pdo->prepare($sql);
         $stmt->execute([
             $nome,
-            $codigo, 
+            $codigo,
             $descricao,
             $tipo,
             $preco_unitario,
@@ -67,18 +65,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $estoque_atual,
             $ativo
         ]);
-        
+
+        // Pega o ID do produto inserido
+        $produto_id = $bd->pdo->lastInsertId();
+
+        // Log de criação do produto
+        $logManager->registrarLog(
+            $_SESSION['usuario_id'],
+            'CREATE',
+            'produtos',
+            $produto_id,
+            null,
+            [
+                'nome' => $nome,
+                'codigo' => $codigo,
+                'descricao' => $descricao,
+                'tipo' => $tipo,
+                'preco_unitario' => $preco_unitario,
+                'estoque_minimo' => $estoque_minimo,
+                'estoque_atual' => $estoque_atual,
+                'ativo' => $ativo
+            ],
+            'Produto cadastrado manualmente via formulário.'
+        );
+
+        // Log de entrada de estoque (se houver)
+        if ($estoque_atual > 0) {
+            $logManager->registrarEntradaEstoque(
+                $produto_id,
+                $_SESSION['usuario_id'],
+                $estoque_atual,
+                null, // fornecedor_id
+                $preco_unitario,
+                null, // nota fiscal
+                "Entrada inicial de estoque ao cadastrar produto"
+            );
+        }
+
         $mensagem = "Produto cadastrado com sucesso!";
         $tipo_mensagem = "success";
-        
-        // Limpar campos após sucesso
-        $_POST = [];
-        
+
+        $_POST = []; // Limpar campos após sucesso
+
     } catch (Exception $e) {
         $mensagem = "Erro: " . $e->getMessage();
         $tipo_mensagem = "error";
     }
 }
+
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
