@@ -13,7 +13,7 @@ function temPermissao($permissao)
     return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 // Verifica se o ID foi fornecido
 $id = $_GET['id'] ?? null;

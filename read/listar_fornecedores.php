@@ -19,7 +19,7 @@ function temPermissao($permissao)
   return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 $bd = new BancoDeDados();
 $sql = "SELECT * FROM fornecedores ORDER BY nome_empresa ASC";
 $stmt = $bd->pdo->query($sql);
