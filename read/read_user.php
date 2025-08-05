@@ -9,8 +9,8 @@ if (isset($_SESSION['mensagem_sucesso'])) {
 
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-  header("Location: login.php");
-  exit;
+      header("Location: ../login.php");
+    exit;
 }
 
 // Verifica se tem permissão para gerenciar usuários
@@ -25,7 +25,7 @@ function temPermissao($permissao)
   return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 $bd = new BancoDeDados();
 $sql = "SELECT * FROM usuarios ORDER BY nome ASC";
 $stmt = $bd->pdo->query($sql);
@@ -432,7 +432,7 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link">
+                        <a href="../index.php" class="nav-link">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -444,14 +444,14 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="listar_produtos.php" class="nav-link">
+                            <a href="read_product.php" class="nav-link">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="cadastrar_prod.php" class="nav-link">
+                                <a href="../create/create_product.php" class="nav-link">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -464,7 +464,7 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="listar_fornecedores.php" class="nav-link active">
+                        <a href="read_supplier.php" class="nav-link active">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
@@ -476,13 +476,13 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="listar_usuarios.php" class="nav-link">
+                            <a href="read_user.php" class="nav-link">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link">
+                            <a href="../create/create_user.php" class="nav-link">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -500,7 +500,7 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="logout.php" class="nav-link">
+                        <a href="../logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sair</span>
                         </a>
@@ -603,7 +603,7 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
                           title="Editar">
                           <i class="fas fa-edit"></i>
                         </a>
-                        <a href="delete_user.php?id=<?= $u['id'] ?>"
+                        <a href="../delete/delete_user.php?= $u['id'] ?>"
                           style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
                           title="Excluir"
                           onclick="return confirm('Tem certeza que deseja excluir este usuário?')">

@@ -1,6 +1,6 @@
 <?php
 class BancoDeDados {
-    private $host = "localhost:49170";
+    private $host = "localhost";
     private $dbname = "euro_banco";
     private $usuario = "root";
     private $senha = "";

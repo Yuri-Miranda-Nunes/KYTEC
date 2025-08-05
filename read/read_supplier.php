@@ -9,7 +9,7 @@ if (isset($_SESSION['mensagem_sucesso'])) {
 
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-  header("Location: login.php");
+  header("Location: ../login.php");
   exit;
 }
 
@@ -19,7 +19,7 @@ function temPermissao($permissao)
   return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 $bd = new BancoDeDados();
 $sql = "SELECT * FROM fornecedores ORDER BY nome_empresa ASC";
 $stmt = $bd->pdo->query($sql);
@@ -411,7 +411,7 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link">
+                        <a href="../index.php" class="nav-link">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -423,14 +423,14 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="listar_produtos.php" class="nav-link">
+                            <a href="read_product.php" class="nav-link">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="cadastrar_prod.php" class="nav-link">
+                                <a href="../create/create_product.php" class="nav-link">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -443,7 +443,7 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="listar_fornecedores.php" class="nav-link active">
+                        <a href="read_supplier.php" class="nav-link active">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
@@ -455,13 +455,13 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="listar_usuarios.php" class="nav-link">
+                            <a href="read_user.php" class="nav-link">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link">
+                            <a href="../create/create_user.php" class="nav-link">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -479,7 +479,7 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="logout.php" class="nav-link">
+                        <a href="../logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sair</span>
                         </a>
@@ -512,7 +512,7 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
               <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
             </div>
           </div>
-          <a href="logout.php" class="btn-logout">
+          <a href="../logout.php" class="btn-logout">
             <i class="fas fa-sign-out-alt"></i>
             Sair
           </a>
@@ -521,7 +521,7 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
       <!-- Action Buttons -->
       <div class="action-buttons">
-        <a href="cadastrar_fornecedor.php" class="btn btn-primary">
+        <a href="../create/create_supplier.php" class="btn btn-primary">
           <i class="fas fa-truck"></i>
           Novo Fornecedor
         </a>
@@ -577,7 +577,7 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <h3>Nenhum fornecedor encontrado</h3>
             <p>Não há fornecedores cadastrados no sistema ainda.</p>
             <br>
-            <a href="cadastrar_fornecedor.php" class="btn btn-primary">
+            <a href="../create/create_supplier" class="btn btn-primary">
               <i class="fas fa-truck"></i>
               Cadastrar Primeiro Fornecedor
             </a>

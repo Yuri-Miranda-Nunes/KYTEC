@@ -2,7 +2,7 @@
 // Script para corrigir as permissões existentes no banco de dados
 // Execute este arquivo uma vez para corrigir os dados
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 try {
     $pdo = (new BancoDeDados())->pdo;

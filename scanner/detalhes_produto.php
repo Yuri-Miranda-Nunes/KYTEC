@@ -1,5 +1,5 @@
 <?php
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 if (!isset($_GET['id'])) {
     echo "ID do produto não informado.";

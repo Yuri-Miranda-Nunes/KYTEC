@@ -1,5 +1,5 @@
 <?php
-require_once 'conexao.php';
+require_once '../conexao.php';
 $id = $_GET['id'] ?? 0;
 
 // Todas permissões possíveis:
