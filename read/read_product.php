@@ -1,6 +1,12 @@
 <?php
 session_start();
 
+$mensagemSucesso = '';
+if (isset($_SESSION['mensagem_sucesso'])) {
+    $mensagemSucesso = $_SESSION['mensagem_sucesso'];
+    unset($_SESSION['mensagem_sucesso']); // exibe uma vez só
+}
+
 if (!in_array('listar_produtos', $_SESSION['permissoes'])) {
     echo "Acesso negado.";
     exit;
@@ -65,8 +71,6 @@ function urlOrdenar($coluna)
     return '?' . http_build_query($query);
 }
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -314,11 +318,14 @@ function urlOrdenar($coluna)
         }
 
         .products-table tbody tr {
-            transition: background-color 0.2s ease;
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
 
         .products-table tbody tr:hover {
             background: #f8fafc;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .products-table tbody tr:last-child td {
@@ -506,6 +513,17 @@ function urlOrdenar($coluna)
                 max-width: 120px;
             }
         }
+
+        /* Success Message */
+        .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 
@@ -533,7 +551,7 @@ function urlOrdenar($coluna)
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="../read/read_product.php" class="nav-link">
+                            <a href="../read/read_product.php" class="nav-link active">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
@@ -553,7 +571,7 @@ function urlOrdenar($coluna)
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="read_supplier.php" class="nav-link active">
+                        <a href="read_supplier.php" class="nav-link">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
@@ -623,6 +641,13 @@ function urlOrdenar($coluna)
                 </div>
             </div>
 
+            <!-- Success Message -->
+            <?php if (!empty($mensagemSucesso)): ?>
+                <div class="alert-success">
+                    <?= htmlspecialchars($mensagemSucesso) ?>
+                </div>
+            <?php endif; ?>
+
             <!-- Action Buttons -->
             <div class="action-buttons">
                 <?php if (temPermissao('cadastrar_produtos')): ?>
@@ -653,15 +678,12 @@ function urlOrdenar($coluna)
                                     <th><a href="<?= urlOrdenar('estoque_minimo') ?>">Estoque Mín. <?= iconeOrdenacao('estoque_minimo') ?></a></th>
                                     <th><a href="<?= urlOrdenar('estoque_atual') ?>">Estoque Atual <?= iconeOrdenacao('estoque_atual') ?></a></th>
                                     <th><a href="<?= urlOrdenar('ativo') ?>">Status <?= iconeOrdenacao('ativo') ?></a></th>
-                                    <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
-                                        <th>Ações</th>
-                                    <?php endif; ?>
                                 </tr>
                             </thead>
 
                             <tbody>
                                 <?php foreach ($produtos as $p): ?>
-                                    <tr>
+                                    <tr onclick="window.location.href='focus_product.php?id=<?= $p['id_produto'] ?>'">
                                         <td class="product-name"><?= htmlspecialchars($p['nome']) ?></td>
                                         <td>
                                             <span class="product-code"><?= htmlspecialchars($p['codigo']) ?></span>
@@ -678,7 +700,7 @@ function urlOrdenar($coluna)
                                             </span>
                                         </td>
                                         <td class="description-cell" title="<?= htmlspecialchars($p['descricao']) ?>">
-                                            <?= htmlspecialchars($p['descricao'] ?: 'Sem descrição') ?>
+                                            <?= htmlspecialchars(strlen($p['descricao']) > 50 ? substr($p['descricao'], 0, 50) . '...' : ($p['descricao'] ?: 'Sem descrição')) ?>
                                         </td>
                                         <td class="price">
                                             R$ <?= number_format($p['preco_unitario'], 2, ',', '.') ?>
@@ -709,27 +731,6 @@ function urlOrdenar($coluna)
                                                 <?= $p['ativo'] ? 'Ativo' : 'Inativo' ?>
                                             </span>
                                         </td>
-                                        <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
-                                            <td>
-                                                <div style="display: flex; gap: 8px;">
-                                                    <?php if (temPermissao('editar_produtos')): ?>
-                                                        <a href="../update/update_product.php?id=<?= $p['id_produto'] ?>"
-                                                            style="color: #3b82f6; font-size: 0.875rem; text-decoration: none;"
-                                                            title="Editar">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                    <?php endif; ?>
-                                                    <?php if (temPermissao('excluir_produtos')): ?>
-                                                        <a href="../delete/delete_product.php?id=<?= $p['id_produto'] ?>"
-                                                            style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
-                                                            title="Excluir"
-                                                            onclick="return confirm('Tem certeza que deseja excluir este produto?')">
-                                                            <i class="fas fa-trash"></i>
-                                                        </a>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </td>
-                                        <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -752,8 +753,18 @@ function urlOrdenar($coluna)
             </div>
         </main>
     </div>
-</body>
 
-</html>
+    <script>
+        // Adiciona feedback visual no clique das linhas
+        document.querySelectorAll('.products-table tbody tr').forEach(row => {
+            row.addEventListener('click', function() {
+                this.style.transform = 'scale(0.98)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 150);
+            });
+        });
+    </script>
+</body>
 
 </html>
