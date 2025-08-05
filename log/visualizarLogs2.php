@@ -3,7 +3,7 @@ session_start();
 
 // Verifica se está logado e tem permissão
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -17,7 +17,7 @@ function temPermissao($permissao) {
     return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 require_once 'log_manager.php';
 
 $bd = new BancoDeDados();

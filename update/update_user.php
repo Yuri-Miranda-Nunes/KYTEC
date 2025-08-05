@@ -3,7 +3,7 @@ session_start();
 
 // Verifica se está logado e tem permissão
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-  header("Location: login.php");
+      header("Location: ../login.php");
   exit;
 }
 
@@ -18,13 +18,13 @@ function temPermissao($permissao)
   return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 // Verifica se o ID foi fornecido
 $id = $_GET['id'] ?? null;
 if (!$id || !is_numeric($id)) {
   $_SESSION['mensagem_erro'] = "ID de usuário inválido.";
-  header("Location: listar_usuarios.php");
+  header("Location: ../read/read_user.php");
   exit;
 }
 
@@ -53,12 +53,12 @@ try {
 
   if (!$usuario) {
     $_SESSION['mensagem_erro'] = "Usuário não encontrado.";
-    header("Location: listar_usuarios.php");
+    header("Location: ../read/read_user.php");
     exit;
   }
 } catch (Exception $e) {
   $_SESSION['mensagem_erro'] = "Erro ao buscar usuário: " . $e->getMessage();
-  header("Location: listar_usuarios.php");
+  header("Location: ../read/read_user.php");
   exit;
 }
 
@@ -162,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $_SESSION['mensagem_sucesso'] = "Usuário atualizado com sucesso!";
 
       // Redireciona para a listagem
-      header("Location: listar_usuarios.php");
+      header("Location: ../read/read_user.php");
       exit;
     } catch (Exception $e) {
       $bd->pdo->rollBack();
@@ -731,7 +731,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link">
+                        <a href="../index.php" class="nav-link">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -743,14 +743,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="listar_produtos.php" class="nav-link">
+                            <a href="../read/read_product.php" class="nav-link">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="cadastrar_prod.php" class="nav-link">
+                                <a href="../create/create_product.php" class="nav-link">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -763,7 +763,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="listar_fornecedores.php" class="nav-link active">
+                        <a href="../read/read_supplier.php" class="nav-link active">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
@@ -775,13 +775,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="listar_usuarios.php" class="nav-link">
+                            <a href="../read/read_user.php" class="nav-link">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link">
+                            <a href="../create/create_user.php" class="nav-link">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -793,13 +793,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="nav-section">
                     <div class="nav-section-title">Sistema</div>
                     <div class="nav-item">
-                        <a href="perfil.php" class="nav-link">
+                        <a href="../perfil.php" class="nav-link">
                             <i class="fas fa-user-circle"></i>
                             <span>Meu Perfil</span>
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="logout.php" class="nav-link">
+                        <a href="../logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sair</span>
                         </a>
@@ -826,7 +826,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
             </div>
           </div>
-          <a href="logout.php" class="btn-logout">
+          <a href="../logout.php" class="btn-logout">
             <i class="fas fa-sign-out-alt"></i>
             Sair
           </a>
@@ -981,7 +981,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="submit" class="btn btn-primary">
               <i class="fas fa-save"></i> Salvar Alterações
             </button>
-            <a href="listar_usuarios.php" class="btn btn-secondary">
+            <a href="../read/read_user.php" class="btn btn-secondary">
               <i class="fas fa-arrow-left"></i> Cancelar
             </a>
           </div>

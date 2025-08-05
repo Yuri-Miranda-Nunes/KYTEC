@@ -1,5 +1,5 @@
 <?php
-require_once 'conexao.php';
+require_once '../conexao.php';
 session_start();
 
 if (!isset($_SESSION['usuario_id']) || $_SESSION['usuario_perfil'] !== 'admin') {
@@ -24,5 +24,5 @@ $sql = "DELETE FROM usuarios WHERE id_usuario = ?";
 $stmt = $bd->pdo->prepare($sql);
 $stmt->execute([$id]);
 
-header("Location: listar_usuarios.php");
+header("Location: ../read/read_user.php");
 exit;

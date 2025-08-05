@@ -9,7 +9,13 @@ if (isset($_SESSION['mensagem_sucesso'])) {
 
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-  header("Location: login.php");
+      header("Location: ../login.php");
+    exit;
+}
+
+// Verifica se tem permissão para gerenciar usuários
+if (!in_array('gerenciar_usuarios', $_SESSION['permissoes'])) {
+  echo "Acesso negado.";
   exit;
 }
 
@@ -21,9 +27,9 @@ function temPermissao($permissao)
 
 require_once '../conexao.php';
 $bd = new BancoDeDados();
-$sql = "SELECT * FROM fornecedores ORDER BY nome_empresa ASC";
+$sql = "SELECT * FROM usuarios ORDER BY nome ASC";
 $stmt = $bd->pdo->query($sql);
-$fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -31,7 +37,7 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lista de Fornecedores - Sistema de Estoque</title>
+  <title>Lista de Usuários - Sistema de Estoque</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <style>
     * {
@@ -215,8 +221,8 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
       box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
     }
 
-    /* Suppliers Table */
-    .suppliers-section {
+    /* Users Table */
+    .users-section {
       background: white;
       border-radius: 12px;
       padding: 24px;
@@ -240,13 +246,13 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
       border: 1px solid #e2e8f0;
     }
 
-    .suppliers-table {
+    .users-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.875rem;
     }
 
-    .suppliers-table th {
+    .users-table th {
       background: #f8fafc;
       color: #374151;
       font-weight: 600;
@@ -258,48 +264,74 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
       letter-spacing: 0.05em;
     }
 
-    .suppliers-table td {
+    .users-table td {
       padding: 16px 12px;
       border-bottom: 1px solid #f1f5f9;
       color: #64748b;
       vertical-align: top;
     }
 
-    .suppliers-table tbody tr {
-      transition: all 0.2s ease;
-      cursor: pointer;
+    .users-table tbody tr {
+      transition: background-color 0.2s ease;
     }
 
-    .suppliers-table tbody tr:hover {
+    .users-table tbody tr:hover {
       background: #f8fafc;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    .suppliers-table tbody tr:last-child td {
+    .users-table tbody tr:last-child td {
       border-bottom: none;
     }
 
-    .supplier-name {
+    .user-name {
       font-weight: 500;
       color: #1e293b;
     }
 
-    .supplier-contact {
+    .user-email {
       color: #64748b;
       font-size: 0.875rem;
     }
 
-    .activity-cell {
-      max-width: 200px;
+    .perfil-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
     }
 
-    .activity-text {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .perfil-admin {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .perfil-estoquista {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+
+    .perfil-visualizador {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status-ativo {
+      background: #dcfce7;
+      color: #16a34a;
+    }
+
+    .status-inativo {
+      background: #fee2e2;
+      color: #dc2626;
     }
 
     /* Action Buttons */
@@ -376,25 +408,14 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
         justify-content: center;
       }
 
-      .suppliers-table {
+      .users-table {
         font-size: 0.75rem;
       }
 
-      .suppliers-table th,
-      .suppliers-table td {
+      .users-table th,
+      .users-table td {
         padding: 12px 8px;
       }
-    }
-
-    /* Success Message */
-    .alert-success {
-      background-color: #dcfce7;
-      color: #166534;
-      padding: 12px 20px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-weight: 500;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
   </style>
 </head>
@@ -411,7 +432,7 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link">
+                        <a href="../index.php" class="nav-link">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -423,14 +444,14 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="listar_produtos.php" class="nav-link">
+                            <a href="read_product.php" class="nav-link">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="cadastrar_prod.php" class="nav-link">
+                                <a href="../create/create_product.php" class="nav-link">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -443,7 +464,7 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="listar_fornecedores.php" class="nav-link active">
+                        <a href="read_supplier.php" class="nav-link active">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
@@ -455,13 +476,13 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="listar_usuarios.php" class="nav-link">
+                            <a href="read_user.php" class="nav-link">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link">
+                            <a href="../create/create_user.php" class="nav-link">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -479,7 +500,7 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="logout.php" class="nav-link">
+                        <a href="../logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sair</span>
                         </a>
@@ -493,14 +514,22 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
       <!-- Header -->
       <div class="header">
         <?php if (!empty($mensagemSucesso)): ?>
-          <div class="alert-success">
+          <div style="
+        background-color: #dcfce7;
+        color: #166534;
+        padding: 12px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-weight: 500;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    ">
             <?= htmlspecialchars($mensagemSucesso) ?>
           </div>
         <?php endif; ?>
 
         <div class="header-left">
-          <h1>Lista de Fornecedores</h1>
-          <p class="header-subtitle">Gerencie e visualize todos os fornecedores cadastrados</p>
+          <h1>Lista de Usuários</h1>
+          <p class="header-subtitle">Gerencie e visualize todos os usuários do sistema</p>
         </div>
         <div class="header-right">
           <div class="user-info">
@@ -521,50 +550,66 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
       <!-- Action Buttons -->
       <div class="action-buttons">
-        <a href="cadastrar_fornecedor.php" class="btn btn-primary">
-          <i class="fas fa-truck"></i>
-          Novo Fornecedor
+        <a href="cadastrar_usuario.php" class="btn btn-primary">
+          <i class="fas fa-user-plus"></i>
+          Novo Usuário
         </a>
       </div>
 
-      <!-- Suppliers Section -->
-      <div class="suppliers-section">
+      <!-- Users Section -->
+      <div class="users-section">
         <h2 class="section-title">
-          <i class="fas fa-truck"></i>
-          Fornecedores Cadastrados
+          <i class="fas fa-users"></i>
+          Usuários Cadastrados
         </h2>
 
-        <?php if (count($fornecedores) > 0): ?>
+        <?php if (count($usuarios) > 0): ?>
           <div class="table-container">
-            <table class="suppliers-table">
+            <table class="users-table">
               <thead>
                 <tr>
                   <th>Nome</th>
-                  <th>Atividade</th>
-                  <th>Contato</th>
-                  <th>Representante</th>
-                  <th>Email Representante</th>
-                  <th>Endereço</th>
+                  <th>Email</th>
+                  <th>Perfil</th>
+                  <th>Status</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                <?php foreach ($fornecedores as $f): ?>
-                  <tr onclick="window.location.href='visualizar.php?id=<?= $f['id_fornecedor'] ?>'">
-                    <td class="supplier-name"><?= htmlspecialchars($f['nome_empresa']) ?></td>
-                    <td class="activity-cell">
-                      <div class="activity-text">
-                        <?= htmlspecialchars(strlen($f['atividade']) > 50 ? substr($f['atividade'], 0, 50) . '...' : $f['atividade']) ?>
-                      </div>
-                    </td>
-                    <td class="supplier-contact">
-                      <?= $f['telefone_representante'] ? htmlspecialchars($f['telefone_representante']) : '-' ?>
-                    </td>
-                    <td><?= $f['nome_representante'] ? htmlspecialchars($f['nome_representante']) : '-' ?></td>
-                    <td class="supplier-contact">
-                      <?= $f['email_representante'] ? htmlspecialchars($f['email_representante']) : '-' ?>
+                <?php foreach ($usuarios as $u): ?>
+                  <tr>
+                    <td class="user-name"><?= htmlspecialchars($u['nome']) ?></td>
+                    <td class="user-email"><?= htmlspecialchars($u['email']) ?></td>
+                    <td>
+                      <?php
+                      $perfil = $u['perfil'];
+                      $perfilClass = 'perfil-visualizador';
+                      if ($perfil === 'admin') $perfilClass = 'perfil-admin';
+                      elseif ($perfil === 'estoquista') $perfilClass = 'perfil-estoquista';
+                      ?>
+                      <span class="perfil-badge <?= $perfilClass ?>">
+                        <?= htmlspecialchars(ucfirst($perfil)) ?>
+                      </span>
                     </td>
                     <td>
-                      <?= $f['endereco'] ? htmlspecialchars(strlen($f['endereco']) > 40 ? substr($f['endereco'], 0, 40) . '...' : $f['endereco']) : '-' ?>
+                      <span class="status-badge <?= $u['ativo'] ? 'status-ativo' : 'status-inativo' ?>">
+                        <?= $u['ativo'] ? 'Ativo' : 'Inativo' ?>
+                      </span>
+                    </td>
+                    <td>
+                      <div style="display: flex; gap: 8px;">
+                        <a href="editar_usuario.php?id=<?= $u['id'] ?>"
+                          style="color: #3b82f6; font-size: 0.875rem; text-decoration: none;"
+                          title="Editar">
+                          <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="../delete/delete_user.php?= $u['id'] ?>"
+                          style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
+                          title="Excluir"
+                          onclick="return confirm('Tem certeza que deseja excluir este usuário?')">
+                          <i class="fas fa-trash"></i>
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 <?php endforeach; ?>
@@ -573,31 +618,19 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
           </div>
         <?php else: ?>
           <div class="empty-state">
-            <i class="fas fa-truck"></i>
-            <h3>Nenhum fornecedor encontrado</h3>
-            <p>Não há fornecedores cadastrados no sistema ainda.</p>
+            <i class="fas fa-users"></i>
+            <h3>Nenhum usuário encontrado</h3>
+            <p>Não há usuários cadastrados no sistema ainda.</p>
             <br>
-            <a href="cadastrar_fornecedor.php" class="btn btn-primary">
-              <i class="fas fa-truck"></i>
-              Cadastrar Primeiro Fornecedor
+            <a href="cadastrar_usuario.php" class="btn btn-primary">
+              <i class="fas fa-user-plus"></i>
+              Cadastrar Primeiro Usuário
             </a>
           </div>
         <?php endif; ?>
       </div>
     </main>
   </div>
-
-  <script>
-    // Adiciona feedback visual no clique das linhas
-    document.querySelectorAll('.suppliers-table tbody tr').forEach(row => {
-      row.addEventListener('click', function() {
-        this.style.transform = 'scale(0.98)';
-        setTimeout(() => {
-          this.style.transform = '';
-        }, 150);
-      });
-    });
-  </script>
 </body>
 
 </html>

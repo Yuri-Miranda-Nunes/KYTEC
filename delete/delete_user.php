@@ -3,7 +3,7 @@ session_start();
 
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -13,11 +13,11 @@ if (!in_array('gerenciar_usuarios', $_SESSION['permissoes'])) {
     exit;
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 // Verifica se foi passado o ID do usuário
 if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: listar_usuarios.php?erro=id_invalido");
+    header("Location: ../read/read_user.php?erro=id_invalido");
     exit;
 }
 
@@ -26,7 +26,7 @@ $bd = new BancoDeDados();
 
 // Impedir que o usuário exclua a si mesmo
 if ($id_usuario === $_SESSION['usuario_id']) {
-    header("Location: listar_usuarios.php?erro=nao_pode_excluir_proprio_usuario");
+    header("Location: ../read/read_user.php?erro=nao_pode_excluir_proprio_usuario");
     exit;
 }
 
@@ -40,7 +40,7 @@ try {
     $usuario = $stmt_verificar->fetch(PDO::FETCH_ASSOC);
     
     if (!$usuario) {
-        header("Location: listar_usuarios.php?erro=usuario_nao_encontrado");
+        header("Location: ../read/read_user.php?erro=usuario_nao_encontrado");
         exit;
     }
     
@@ -68,7 +68,7 @@ try {
                 $stmt_desativar->execute();
                 
                 $bd->pdo->commit();
-                header("Location: listar_usuarios.php?sucesso=usuario_desativado");
+                header("Location: ../read/read_user.php?sucesso=usuario_desativado");
                 exit;
             } else {
                 // Se não tem permissão de gerenciar usuários, exclui fisicamente
@@ -78,7 +78,7 @@ try {
                 $stmt_excluir->execute();
                 
                 $bd->pdo->commit();
-                header("Location: listar_usuarios.php?sucesso=usuario_excluido");
+                header("Location: ../read/read_user.php?sucesso=usuario_excluido");
                 exit;
             }
         } catch (Exception $e) {

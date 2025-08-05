@@ -18,75 +18,58 @@ require_once '../conexao.php';
 // Verifica se o ID foi fornecido
 $id = $_GET['id'] ?? null;
 if (!$id || !is_numeric($id)) {
-    $_SESSION['mensagem_erro'] = "ID de fornecedor inválido.";
-    header("Location: ../read/read_supplier.php");
+    $_SESSION['mensagem_erro'] = "ID de produto inválido.";
+    header("Location: ../read/read_product.php");
     exit;
 }
 
 $bd = new BancoDeDados();
 
-// Buscar dados do fornecedor
+// Buscar dados do produto
 try {
-    $stmt = $bd->pdo->prepare("SELECT * FROM fornecedores WHERE id_fornecedor = ?");
+    $stmt = $bd->pdo->prepare("SELECT * FROM produtos WHERE id_produto = ?");
     $stmt->execute([$id]);
-    $fornecedor = $stmt->fetch(PDO::FETCH_ASSOC);
+    $produto = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$fornecedor) {
-        $_SESSION['mensagem_erro'] = "Fornecedor não encontrado.";
-        header("Location: ../read/read_supplier.php");
+    if (!$produto) {
+        $_SESSION['mensagem_erro'] = "Produto não encontrado.";
+        header("Location: ../read/read_product.php");
         exit;
     }
 } catch (Exception $e) {
-    $_SESSION['mensagem_erro'] = "Erro ao buscar fornecedor: " . $e->getMessage();
-    header("Location: ../read/read_supplier.php");
+    $_SESSION['mensagem_erro'] = "Erro ao buscar produto: " . $e->getMessage();
+    header("Location: ../read/read_product.php");
     exit;
 }
 
-// Função para formatar telefone
-function formatarTelefone($telefone)
+// Função para formatar preço
+function formatarPreco($preco)
 {
-    if (empty($telefone)) return '-';
-
-    $telefone = preg_replace('/\D/', '', $telefone);
-
-    if (strlen($telefone) == 11) {
-        return sprintf(
-            '(%s) %s-%s',
-            substr($telefone, 0, 2),
-            substr($telefone, 2, 5),
-            substr($telefone, 7)
-        );
-    } elseif (strlen($telefone) == 10) {
-        return sprintf(
-            '(%s) %s-%s',
-            substr($telefone, 0, 2),
-            substr($telefone, 2, 4),
-            substr($telefone, 6)
-        );
-    }
-
-    return $telefone;
+    return 'R$ ' . number_format($preco, 2, ',', '.');
 }
 
-// Função para formatar CNPJ
-function formatarCNPJ($cnpj)
+// Função para obter classe do badge de tipo
+function getTipoBadgeClass($tipo)
 {
-    if (empty($cnpj)) return '-';
-
-    $cnpj = preg_replace('/\D/', '', $cnpj);
-
-    if (strlen($cnpj) == 14) {
-        return sprintf(
-            '%s.%s.%s/%s-%s',
-            substr($cnpj, 0, 2),
-            substr($cnpj, 2, 3),
-            substr($cnpj, 5, 3),
-            substr($cnpj, 8, 4),
-            substr($cnpj, 12, 2)
-        );
+    switch ($tipo) {
+        case 'acabado':
+            return 'type-acabado';
+        case 'matéria-prima':
+            return 'type-materia-prima';
+        default:
+            return 'type-outro';
     }
+}
 
-    return $cnpj;
+// Função para obter classe do badge de estoque
+function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
+{
+    if ($estoqueAtual <= $estoqueMinimo) {
+        return 'stock-low';
+    } elseif ($estoqueAtual <= ($estoqueMinimo * 2)) {
+        return 'stock-medium';
+    }
+    return 'stock-normal';
 }
 ?>
 <!DOCTYPE html>
@@ -95,7 +78,7 @@ function formatarCNPJ($cnpj)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualizar Fornecedor - Sistema de Estoque</title>
+    <title>Visualizar Produto - Sistema de Estoque</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -298,24 +281,24 @@ function formatarCNPJ($cnpj)
             gap: 8px;
         }
 
-        /* Supplier Header */
-        .supplier-header {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        /* Product Header */
+        .product-header {
+            background: linear-gradient(135deg, #16a34a, #15803d);
             color: white;
             border-radius: 12px;
             padding: 24px;
             margin-bottom: 24px;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
         }
 
-        .supplier-main-info {
+        .product-main-info {
             display: flex;
             align-items: center;
             gap: 16px;
             margin-bottom: 16px;
         }
 
-        .supplier-icon {
+        .product-icon {
             width: 64px;
             height: 64px;
             background: rgba(255, 255, 255, 0.2);
@@ -326,21 +309,22 @@ function formatarCNPJ($cnpj)
             font-size: 2rem;
         }
 
-        .supplier-details h1 {
+        .product-details h1 {
             font-size: 2rem;
             font-weight: 700;
             margin-bottom: 4px;
         }
 
-        .supplier-details p {
+        .product-details p {
             font-size: 1rem;
             opacity: 0.9;
         }
 
-        .supplier-actions {
+        .product-status {
             display: flex;
             gap: 12px;
-            justify-content: flex-end;
+            align-items: center;
+            margin-top: 12px;
         }
 
         /* Info Grid */
@@ -399,17 +383,8 @@ function formatarCNPJ($cnpj)
             font-style: italic;
         }
 
-        .info-value.system-info {
-            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-            font-size: 0.85rem;
-            background: #f1f5f9;
-            padding: 4px 8px;
-            border-radius: 4px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .supplier-id {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        .product-id {
+            background: linear-gradient(135deg, #16a34a, #15803d);
             color: white;
             padding: 4px 8px;
             border-radius: 4px;
@@ -417,12 +392,103 @@ function formatarCNPJ($cnpj)
             font-size: 0.85rem;
         }
 
-        /* Activity Section */
-        .activity-section {
+        .product-code {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 0.9rem;
+            background: #f1f5f9;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        /* Type Badges */
+        .type-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .type-acabado {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .type-materia-prima {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .type-outro {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        /* Stock Badges */
+        .stock-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .stock-low {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .stock-normal {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .stock-medium {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-ativo {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .status-inativo {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fef2f2;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .price-display {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #16a34a;
+            background: #f0fdf4;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border-left: 4px solid #16a34a;
+        }
+
+        /* Description Section */
+        .description-section {
             grid-column: 1 / -1;
         }
 
-        .activity-text {
+        .description-text {
             background: white;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
@@ -478,28 +544,6 @@ function formatarCNPJ($cnpj)
             color: #374151;
         }
 
-        .btn-ghost {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .btn-ghost:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .btn-ghost-danger {
-            background: rgba(239, 68, 68, 0.1);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.2);
-        }
-
-        .btn-ghost-danger:hover {
-            background: rgba(239, 68, 68, 0.2);
-            border-color: rgba(239, 68, 68, 0.3);
-        }
-
         /* Navigation Actions */
         .nav-actions {
             display: flex;
@@ -533,12 +577,12 @@ function formatarCNPJ($cnpj)
                 justify-content: center;
             }
 
-            .supplier-main-info {
+            .product-main-info {
                 flex-direction: column;
                 text-align: center;
             }
 
-            .supplier-actions {
+            .product-status {
                 justify-content: center;
             }
 
@@ -577,7 +621,7 @@ function formatarCNPJ($cnpj)
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="../read/read_product.php" class="nav-link">
+                            <a href="../read/read_product.php" class="nav-link active">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
@@ -597,7 +641,7 @@ function formatarCNPJ($cnpj)
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="../read/read_supplier.php" class="nav-link active">
+                        <a href="../read/read_supplier.php" class="nav-link">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
@@ -647,8 +691,8 @@ function formatarCNPJ($cnpj)
             <!-- Header -->
             <div class="header">
                 <div class="header-left">
-                    <h1>Detalhes do Fornecedor</h1>
-                    <p class="header-subtitle">Visualize todas as informações do fornecedor</p>
+                    <h1>Detalhes do Produto</h1>
+                    <p class="header-subtitle">Visualize todas as informações do produto</p>
                 </div>
                 <div class="header-right">
                     <div class="user-info">
@@ -667,131 +711,168 @@ function formatarCNPJ($cnpj)
                 </div>
             </div>
 
-            <!-- Supplier Header -->
-            <div class="supplier-header">
-                <div class="supplier-main-info">
-                    <div class="supplier-icon">
-                        <i class="fas fa-truck"></i>
+            <!-- Product Header -->
+            <div class="product-header">
+                <div class="product-main-info">
+                    <div class="product-icon">
+                        <i class="fas fa-cube"></i>
                     </div>
-                    <div class="supplier-details">
-                        <h1><?= htmlspecialchars($fornecedor['nome_empresa']) ?></h1>
-                        <p><?= !empty($fornecedor['atividade']) ? htmlspecialchars($fornecedor['atividade']) : 'Atividade não informada' ?></p>
+                    <div class="product-details">
+                        <h1><?= htmlspecialchars($produto['nome']) ?></h1>
+                        <p>Código: <?= htmlspecialchars($produto['codigo']) ?></p>
+                        <div class="product-status">
+                            <span class="type-badge <?= getTipoBadgeClass($produto['tipo']) ?>">
+                                <?= htmlspecialchars(ucfirst($produto['tipo'])) ?>
+                            </span>
+                            <span class="status-badge <?= $produto['ativo'] ? 'status-ativo' : 'status-inativo' ?>">
+                                <?= $produto['ativo'] ? 'Ativo' : 'Inativo' ?>
+                            </span>
+                        </div>
                     </div>
                 </div>
-
             </div>
 
             <!-- Information Grid -->
             <div class="info-grid">
-                <!-- Informações da Empresa -->
-                <div class="info-card">
-                    <h3>
-                        <i class="fas fa-building"></i>
-                        Informações da Empresa
-                    </h3>
-
-                    <div class="info-item">
-                        <span class="info-label">Nome da Empresa</span>
-                        <span class="info-value"><?= htmlspecialchars($fornecedor['nome_empresa']) ?></span>
-                    </div>
-
-                    <div class="info-item">
-                        <span class="info-label">CNPJ</span>
-                        <span class="info-value <?= empty($fornecedor['cnpj']) ? 'empty' : '' ?>">
-                            <?= formatarCNPJ($fornecedor['cnpj']) ?>
-                        </span>
-                    </div>
-
-                    <div class="info-item">
-                        <span class="info-label">Atividade Principal</span>
-                        <span class="info-value <?= empty($fornecedor['atividade']) ? 'empty' : '' ?>">
-                            <?= !empty($fornecedor['atividade']) ? htmlspecialchars($fornecedor['atividade']) : 'Não informado' ?>
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Informações do Representante -->
-                <div class="info-card">
-                    <h3>
-                        <i class="fas fa-user-tie"></i>
-                        Representante
-                    </h3>
-
-                    <div class="info-item">
-                        <span class="info-label">Nome do Representante</span>
-                        <span class="info-value <?= empty($fornecedor['nome_representante']) ? 'empty' : '' ?>">
-                            <?= !empty($fornecedor['nome_representante']) ? htmlspecialchars($fornecedor['nome_representante']) : 'Não informado' ?>
-                        </span>
-                    </div>
-
-                    <div class="info-item">
-                        <span class="info-label">Telefone do Representante</span>
-                        <span class="info-value <?= empty($fornecedor['telefone_representante']) ? 'empty' : '' ?>">
-                            <?= formatarTelefone($fornecedor['telefone_representante']) ?>
-                        </span>
-                    </div>
-
-                    <div class="info-item">
-                        <span class="info-label">Email do Representante</span>
-                        <span class="info-value <?= empty($fornecedor['email_representante']) ? 'empty' : '' ?>">
-                            <?= !empty($fornecedor['email_representante']) ? htmlspecialchars($fornecedor['email_representante']) : 'Não informado' ?>
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Endereço -->
-                <div class="info-card">
-                    <h3>
-                        <i class="fas fa-map-marker-alt"></i>
-                        Endereço
-                    </h3>
-
-                    <div class="info-item">
-                        <span class="info-label">Endereço Completo</span>
-                        <span class="info-value <?= empty($fornecedor['endereco']) ? 'empty' : '' ?>">
-                            <?= !empty($fornecedor['endereco']) ? htmlspecialchars($fornecedor['endereco']) : 'Endereço não informado' ?>
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Informações de Controle -->
+                <!-- Informações Básicas -->
                 <div class="info-card">
                     <h3>
                         <i class="fas fa-info-circle"></i>
+                        Informações Básicas
+                    </h3>
+
+                    <div class="info-item">
+                        <span class="info-label">Nome do Produto</span>
+                        <span class="info-value"><?= htmlspecialchars($produto['nome']) ?></span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Código</span>
+                        <span class="info-value">
+                            <span class="product-code"><?= htmlspecialchars($produto['codigo']) ?></span>
+                        </span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Tipo</span>
+                        <span class="info-value">
+                            <span class="type-badge <?= getTipoBadgeClass($produto['tipo']) ?>">
+                                <?= htmlspecialchars(ucfirst($produto['tipo'])) ?>
+                            </span>
+                        </span>
+                    </div>
+
+                    
+                </div>
+
+                <!-- Informações Financeiras -->
+                <div class="info-card">
+                    <h3>
+                        <i class="fas fa-dollar-sign"></i>
+                        Informações Financeiras
+                    </h3>
+
+                    <div class="info-item">
+                        <span class="info-label">Preço Unitário</span>
+                        <span class="info-value">
+                            <div class="price-display"><?= formatarPreco($produto['preco_unitario']) ?></div>
+                        </span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Valor Total em Estoque</span>
+                        <span class="info-value">
+                            <?php $valorTotal = $produto['preco_unitario'] * $produto['estoque_atual']; ?>
+                            <strong><?= formatarPreco($valorTotal) ?></strong>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Controle de Estoque -->
+                <div class="info-card">
+                    <h3>
+                        <i class="fas fa-warehouse"></i>
+                        Controle de Estoque
+                    </h3>
+
+                    <div class="info-item">
+                        <span class="info-label">Estoque Atual</span>
+                        <span class="info-value">
+                            <span class="stock-badge <?= getEstoqueBadgeClass($produto['estoque_atual'], $produto['estoque_minimo']) ?>">
+                                <?= $produto['estoque_atual'] ?> unidades
+                            </span>
+                        </span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Estoque Mínimo</span>
+                        <span class="info-value">
+                            <span class="stock-badge stock-normal">
+                                <?= $produto['estoque_minimo'] ?> unidades
+                            </span>
+                        </span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">Situação do Estoque</span>
+                        <span class="info-value">
+                            <?php
+                            $situacao = '';
+                            $classe = '';
+                            if ($produto['estoque_atual'] <= $produto['estoque_minimo']) {
+                                $situacao = 'Estoque Baixo - Reposição Urgente';
+                                $classe = 'stock-low';
+                            } elseif ($produto['estoque_atual'] <= ($produto['estoque_minimo'] * 2)) {
+                                $situacao = 'Estoque em Alerta';
+                                $classe = 'stock-medium';
+                            } else {
+                                $situacao = 'Estoque Normal';
+                                $classe = 'stock-normal';
+                            }
+                            ?>
+                            <span class="stock-badge <?= $classe ?>"><?= $situacao ?></span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Informações do Sistema -->
+                <div class="info-card">
+                    <h3>
+                        <i class="fas fa-cog"></i>
                         Informações do Sistema
                     </h3>
 
                     <div class="info-item">
                         <span class="info-label">Cadastrado em</span>
                         <span class="info-value">
-                            <?= date('d/m/Y \à\s H:i', strtotime($fornecedor['criado_em'])) ?>
+                            <?= date('d/m/Y \à\s H:i', strtotime($produto['criado_em'])) ?>
                         </span>
                     </div>
 
                     <div class="info-item">
                         <span class="info-label">Última Atualização</span>
                         <span class="info-value">
-                            <?= date('d/m/Y \à\s H:i', strtotime($fornecedor['atualizado_em'])) ?>
+                            <?= date('d/m/Y \à\s H:i', strtotime($produto['atualizado_em'])) ?>
                         </span>
                     </div>
 
                     <div class="info-item">
-                        <span class="info-label">ID do Fornecedor</span>
+                        <span class="info-label">ID do Produto</span>
                         <span class="info-value">
-                            <span class="supplier-id">#<?= str_pad($fornecedor['id_fornecedor'], 4, '0', STR_PAD_LEFT) ?></span>
+                            <span class="product-id">#<?= str_pad($produto['id_produto'], 4, '0', STR_PAD_LEFT) ?></span>
                         </span>
                     </div>
                 </div>
 
-                <!-- Atividade -->
-                <div class="info-card activity-section">
+                <!-- Descrição -->
+                <div class="info-card description-section">
                     <h3>
-                        <i class="fas fa-briefcase"></i>
-                        Descrição Detalhada da Atividade
+                        <i class="fas fa-align-left"></i>
+                        Descrição do Produto
                     </h3>
 
-                    <div class="activity-text">
-                        <?= !empty($fornecedor['atividade']) ? nl2br(htmlspecialchars($fornecedor['atividade'])) : '<em style="color: #94a3b8;">Descrição detalhada não informada</em>' ?>
+                    <div class="description-text">
+                        <?= !empty($produto['descricao']) ? nl2br(htmlspecialchars($produto['descricao'])) : '<em style="color: #94a3b8;">Descrição não informada</em>' ?>
                     </div>
                 </div>
             </div>
@@ -799,18 +880,22 @@ function formatarCNPJ($cnpj)
             <!-- Navigation Actions -->
             <div class="info-section">
                 <div class="nav-actions">
-                    <a href="../read/read_supplier.php" class="btn btn-secondary">
+                    <a href="../read/read_product.php" class="btn btn-secondary">
                         <i class="fas fa-arrow-left"></i>
                         Voltar à Lista
                     </a>
-                    <a href="../update/update_supplier.php?id=<?= $fornecedor['id_fornecedor'] ?>" class="btn btn-primary">
-                        <i class="fas fa-edit"></i>
-                        Editar Fornecedor
-                    </a>
-                    <a href="../delete/delete_supplier.php?id=<?= $fornecedor['id_fornecedor'] ?>" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este fornecedor? Esta ação não pode ser desfeita.')">
-                        <i class="fas fa-trash"></i>
-                        Excluir Fornecedor
-                    </a>
+                    <?php if (temPermissao('editar_produtos')): ?>
+                        <a href="../update/update_product.php?id=<?= $produto['id_produto'] ?>" class="btn btn-primary">
+                            <i class="fas fa-edit"></i>
+                            Editar Produto
+                        </a>
+                    <?php endif; ?>
+                    <?php if (temPermissao('excluir_produtos')): ?>
+                        <a href="../delete/delete_product.php?id=<?= $produto['id_produto'] ?>" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.')">
+                            <i class="fas fa-trash"></i>
+                            Excluir Produto
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </main>
@@ -819,11 +904,11 @@ function formatarCNPJ($cnpj)
     <script>
         // Função para confirmar exclusão
         function confirmarExclusao() {
-            return confirm('Tem certeza que deseja excluir este fornecedor?\n\nEsta ação não pode ser desfeita e removerá permanentemente todos os dados do fornecedor do sistema.');
+            return confirm('Tem certeza que deseja excluir este produto?\n\nEsta ação não pode ser desfeita e removerá permanentemente todos os dados do produto do sistema.');
         }
 
         // Adicionar confirmação aos links de exclusão
-        document.querySelectorAll('a[href*="excluir_fornecedor"]').forEach(link => {
+        document.querySelectorAll('a[href*="delete_product"]').forEach(link => {
             link.addEventListener('click', function(e) {
                 if (!confirmarExclusao()) {
                     e.preventDefault();
