@@ -730,7 +730,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <!-- Form Actions -->
                     <div class="form-actions">
-                        <a href="../read/read_user.php" class="btn btn-secondary">
+                        <a href="../read/read_product.php" class="btn btn-secondary">
                             <i class="fas fa-times"></i>
                             Cancelar
                         </a>

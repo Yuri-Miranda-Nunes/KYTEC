@@ -3,7 +3,7 @@ session_start();
 
 // Verifica se está logado e tem permissão
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['mensagem_sucesso'] = "Usuário cadastrado com sucesso!";
 
             // Redireciona para a listagem
-            header("Location: listar_usuarios.php");
+            header("Location: ../read/read_user.php");
             exit;
 
             // Limpar campos após sucesso

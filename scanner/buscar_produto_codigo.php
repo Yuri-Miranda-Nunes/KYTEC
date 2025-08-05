@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['codigo_barras'])) {
     $codigo = trim($_POST['codigo_barras']);
@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['codigo_barras'])) {
         exit;
     } else {
         $_SESSION['erro'] = "Produto com código '{$codigo}' não encontrado.";
-        header("Location: buscar_produto.php");
+        header("Location: buscar_produto_codigo.php");
         exit;
     }
 }

@@ -9,8 +9,8 @@ if (isset($_SESSION['mensagem_sucesso'])) {
 
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-  header("Location: login.php");
-  exit;
+      header("Location: ../login.php");
+    exit;
 }
 
 // Verifica se tem permissão para gerenciar usuários

@@ -440,14 +440,14 @@ function temPermissao($permissao) {
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="read\read_product.php" class="nav-link">
+                            <a href="read/read_product.php" class="nav-link">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="create\create_product.php" class="nav-link">
+                                <a href="create/create_product.php" class="nav-link">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -472,7 +472,7 @@ function temPermissao($permissao) {
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="read\read_user.php" class="nav-link">
+                            <a href="read/read_user.php" class="nav-link">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>

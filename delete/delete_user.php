@@ -40,7 +40,7 @@ try {
     $usuario = $stmt_verificar->fetch(PDO::FETCH_ASSOC);
     
     if (!$usuario) {
-        header("Location: listar_usuarios.php?erro=usuario_nao_encontrado");
+        header("Location: ../read/read_user.php?erro=usuario_nao_encontrado");
         exit;
     }
     
@@ -68,7 +68,7 @@ try {
                 $stmt_desativar->execute();
                 
                 $bd->pdo->commit();
-                header("Location: listar_usuarios.php?sucesso=usuario_desativado");
+                header("Location: ../read/read_user.php?sucesso=usuario_desativado");
                 exit;
             } else {
                 // Se não tem permissão de gerenciar usuários, exclui fisicamente
@@ -78,7 +78,7 @@ try {
                 $stmt_excluir->execute();
                 
                 $bd->pdo->commit();
-                header("Location: listar_usuarios.php?sucesso=usuario_excluido");
+                header("Location: ../read/read_user.php?sucesso=usuario_excluido");
                 exit;
             }
         } catch (Exception $e) {

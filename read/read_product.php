@@ -7,7 +7,7 @@ if (!in_array('listar_produtos', $_SESSION['permissoes'])) {
 }
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -713,14 +713,14 @@ function urlOrdenar($coluna)
                                             <td>
                                                 <div style="display: flex; gap: 8px;">
                                                     <?php if (temPermissao('editar_produtos')): ?>
-                                                        <a href="../update/?= $p['id_produto'] ?>"
+                                                        <a href="../update/update_product.php?id=<?= $p['id_produto'] ?>"
                                                             style="color: #3b82f6; font-size: 0.875rem; text-decoration: none;"
                                                             title="Editar">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
                                                     <?php endif; ?>
                                                     <?php if (temPermissao('excluir_produtos')): ?>
-                                                        <a href="excluir_produto.php?id=<?= $p['id_produto'] ?>"
+                                                        <a href="../delete/delete_product.php?id=<?= $p['id_produto'] ?>"
                                                             style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
                                                             title="Excluir"
                                                             onclick="return confirm('Tem certeza que deseja excluir este produto?')">
@@ -742,7 +742,7 @@ function urlOrdenar($coluna)
                         <p>Não há produtos cadastrados no sistema ainda.</p>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <br>
-                            <a href="cadastrar_prod.php" class="btn btn-primary">
+                            <a href="../create/create_product.php" class="btn btn-primary">
                                 <i class="fas fa-plus"></i>
                                 Cadastrar Primeiro Produto
                             </a>

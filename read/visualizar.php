@@ -3,7 +3,7 @@ session_start();
 
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -19,7 +19,7 @@ require_once '../conexao.php';
 $id = $_GET['id'] ?? null;
 if (!$id || !is_numeric($id)) {
     $_SESSION['mensagem_erro'] = "ID de fornecedor inválido.";
-    header("Location: listar_fornecedores.php");
+    header("Location: ../read/read_supplier.php");
     exit;
 }
 
@@ -33,12 +33,12 @@ try {
 
     if (!$fornecedor) {
         $_SESSION['mensagem_erro'] = "Fornecedor não encontrado.";
-        header("Location: listar_fornecedores.php");
+        header("Location: ../read/read_supplier.php");
         exit;
     }
 } catch (Exception $e) {
     $_SESSION['mensagem_erro'] = "Erro ao buscar fornecedor: " . $e->getMessage();
-    header("Location: listar_fornecedores.php");
+    header("Location: ../read/read_supplier.php");
     exit;
 }
 
@@ -577,14 +577,14 @@ function formatarCNPJ($cnpj)
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="listar_produtos.php" class="nav-link">
+                            <a href="../read/read_product.php" class="nav-link">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="cadastrar_prod.php" class="nav-link">
+                                <a href="../create/create_product.php" class="nav-link">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -597,7 +597,7 @@ function formatarCNPJ($cnpj)
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="listar_fornecedores.php" class="nav-link active">
+                        <a href="../read/read_supplier.php" class="nav-link active">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
@@ -609,13 +609,13 @@ function formatarCNPJ($cnpj)
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="listar_usuarios.php" class="nav-link">
+                            <a href="../read/read_user.php" class="nav-link">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link">
+                            <a href="../create/create_user.php" class="nav-link">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -627,13 +627,13 @@ function formatarCNPJ($cnpj)
                 <div class="nav-section">
                     <div class="nav-section-title">Sistema</div>
                     <div class="nav-item">
-                        <a href="perfil.php" class="nav-link">
+                        <a href="../perfil.php" class="nav-link">
                             <i class="fas fa-user-circle"></i>
                             <span>Meu Perfil</span>
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="logout.php" class="nav-link">
+                        <a href="../logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sair</span>
                         </a>
@@ -660,7 +660,7 @@ function formatarCNPJ($cnpj)
                             <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
                         </div>
                     </div>
-                    <a href="logout.php" class="btn-logout">
+                    <a href="../logout.php" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i>
                         Sair
                     </a>
@@ -799,15 +799,15 @@ function formatarCNPJ($cnpj)
             <!-- Navigation Actions -->
             <div class="info-section">
                 <div class="nav-actions">
-                    <a href="listar_fornecedores.php" class="btn btn-secondary">
+                    <a href="../read/read_supplier.php" class="btn btn-secondary">
                         <i class="fas fa-arrow-left"></i>
                         Voltar à Lista
                     </a>
-                    <a href="editar_fornecedor.php?id=<?= $fornecedor['id_fornecedor'] ?>" class="btn btn-primary">
+                    <a href="../update/update_supplier.php?id=<?= $fornecedor['id_fornecedor'] ?>" class="btn btn-primary">
                         <i class="fas fa-edit"></i>
                         Editar Fornecedor
                     </a>
-                    <a href="excluir_fornecedor.php?id=<?= $fornecedor['id_fornecedor'] ?>" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este fornecedor? Esta ação não pode ser desfeita.')">
+                    <a href="../delete/delete_supplier.php?id=<?= $fornecedor['id_fornecedor'] ?>" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este fornecedor? Esta ação não pode ser desfeita.')">
                         <i class="fas fa-trash"></i>
                         Excluir Fornecedor
                     </a>
