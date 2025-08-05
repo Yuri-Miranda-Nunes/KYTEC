@@ -17,7 +17,7 @@ function temPermissao($permissao)
     return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 $bd = new BancoDeDados();
 
 // Parâmetros de ordenação
@@ -521,7 +521,7 @@ function urlOrdenar($coluna)
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link">
+                        <a href="../index.php" class="nav-link">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -533,14 +533,14 @@ function urlOrdenar($coluna)
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="listar_produtos.php" class="nav-link">
+                            <a href="../read/read_product.php" class="nav-link">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="cadastrar_prod.php" class="nav-link">
+                                <a href="../create\create_product.php" class="nav-link">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -553,7 +553,7 @@ function urlOrdenar($coluna)
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="listar_fornecedores.php" class="nav-link active">
+                        <a href="read_supplier.php" class="nav-link active">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
@@ -565,13 +565,13 @@ function urlOrdenar($coluna)
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="listar_usuarios.php" class="nav-link">
+                            <a href="read_user.php" class="nav-link">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link">
+                            <a href="../create/create_user.php" class="nav-link">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -589,7 +589,7 @@ function urlOrdenar($coluna)
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="logout.php" class="nav-link">
+                        <a href="../logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sair</span>
                         </a>
@@ -616,7 +616,7 @@ function urlOrdenar($coluna)
                             <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
                         </div>
                     </div>
-                    <a href="logout.php" class="btn-logout">
+                    <a href="../logout.php" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i>
                         Sair
                     </a>
@@ -626,7 +626,7 @@ function urlOrdenar($coluna)
             <!-- Action Buttons -->
             <div class="action-buttons">
                 <?php if (temPermissao('cadastrar_produtos')): ?>
-                    <a href="cadastrar_prod.php" class="btn btn-primary">
+                    <a href="../create/create_product.php" class="btn btn-primary">
                         <i class="fas fa-plus"></i>
                         Novo Produto
                     </a>
@@ -713,7 +713,7 @@ function urlOrdenar($coluna)
                                             <td>
                                                 <div style="display: flex; gap: 8px;">
                                                     <?php if (temPermissao('editar_produtos')): ?>
-                                                        <a href="editar_produto.php?id=<?= $p['id_produto'] ?>"
+                                                        <a href="../update/?= $p['id_produto'] ?>"
                                                             style="color: #3b82f6; font-size: 0.875rem; text-decoration: none;"
                                                             title="Editar">
                                                             <i class="fas fa-edit"></i>

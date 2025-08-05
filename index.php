@@ -440,14 +440,14 @@ function temPermissao($permissao) {
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="listar_produtos.php" class="nav-link">
+                            <a href="read\read_product.php" class="nav-link">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="cadastrar_prod.php" class="nav-link">
+                                <a href="create\create_product.php" class="nav-link">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -460,7 +460,7 @@ function temPermissao($permissao) {
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="listar_fornecedores.php" class="nav-link active">
+                        <a href="read/read_supplier.php" class="nav-link">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
@@ -478,7 +478,7 @@ function temPermissao($permissao) {
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link">
+                            <a href="create/create_user.php" class="nav-link">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
