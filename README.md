@@ -148,7 +148,3 @@ Este documento descreve os requisitos funcionais e não funcionais do projeto, c
 
 - **RNF10: Conformidade com Privacidade de Dados**  
   O sistema deve estar em conformidade com as leis de privacidade de dados aplicáveis.
-
----
-
-> 🧠 **Observação**: Esta documentação pode ser expandida conforme o desenvolvimento do projeto evolua e novos requisitos sejam identificados.
