@@ -3,7 +3,7 @@ session_start();
 
 // Verifica se está logado e tem permissão
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -18,11 +18,11 @@ function temPermissao($permissao)
     return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 // Verificar se o ID foi fornecido
 if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: listar_produtos.php");
+    header("Location: ../read/read_product.php");
     exit;
 }   
 
@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
 
         $mensagem = "Produto atualizado com sucesso!";
         $tipo_mensagem = "success";
-        header("Location: listar_produtos.php");
+        header("Location: ../read/read_product.php");
         exit;
 
 
@@ -564,7 +564,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link">
+                        <a href="../index.php" class="nav-link">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -576,14 +576,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="listar_produtos.php" class="nav-link">
+                            <a href="../read/read_product.php" class="nav-link">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="cadastrar_prod.php" class="nav-link">
+                                <a href="../create/create_product.php" class="nav-link">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -596,7 +596,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="listar_fornecedores.php" class="nav-link active">
+                        <a href="../read/read_supplier.php" class="nav-link active">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
@@ -608,13 +608,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="listar_usuarios.php" class="nav-link">
+                            <a href="../read/read_user.php" class="nav-link">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link">
+                            <a href="../create/create_user.php" class="nav-link">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -632,7 +632,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="logout.php" class="nav-link">
+                        <a href="../logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sair</span>
                         </a>
@@ -659,7 +659,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
                             <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
                         </div>
                     </div>
-                    <a href="logout.php" class="btn-logout">
+                    <a href="../logout.php" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i>
                         Sair
                     </a>
@@ -838,7 +838,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
 
                         <!-- Form Actions -->
                         <div class="form-actions">
-                            <a href="listar_produtos.php" class="btn btn-secondary">
+                            <a href="../read/read_product.php" class="btn btn-secondary">
                                 <i class="fas fa-times"></i>
                                 Cancelar
                             </a>
@@ -856,7 +856,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
                         <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 16px; color: #f59e0b;"></i>
                         <h3 style="margin-bottom: 8px; color: #374151;">Produto não encontrado</h3>
                         <p style="margin-bottom: 24px;">O produto solicitado não foi encontrado ou você não tem permissão para acessá-lo.</p>
-                        <a href="listar_produtos.php" class="btn btn-primary">
+                        <a href="../read/read_product.php" class="btn btn-primary">
                             <i class="fas fa-arrow-left"></i>
                             Voltar à Lista
                         </a>
