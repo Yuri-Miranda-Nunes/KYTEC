@@ -21,9 +21,51 @@ function temPermissao($permissao)
 
 require_once '../conexao.php';
 $bd = new BancoDeDados();
-$sql = "SELECT * FROM fornecedores ORDER BY nome_empresa ASC";
+
+// Parâmetros de ordenação
+$ordem = $_GET['ordem'] ?? 'nome_empresa';
+$direcao = $_GET['direcao'] ?? 'asc';
+
+// Colunas permitidas para ordenação (segurança)
+$colunasPermitidas = ['nome_empresa', 'atividade', 'telefone_representante', 'nome_representante', 'email_representante', 'endereco'];
+
+// Validar ordem e direção
+if (!in_array($ordem, $colunasPermitidas)) {
+    $ordem = 'nome_empresa';
+}
+if (!in_array($direcao, ['asc', 'desc'])) {
+    $direcao = 'asc';
+}
+
+$sql = "SELECT * FROM fornecedores ORDER BY {$ordem} {$direcao}";
 $stmt = $bd->pdo->query($sql);
 $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+function novaDirecao($coluna)
+{
+    $ordemAtual = $_GET['ordem'] ?? '';
+    $direcaoAtual = $_GET['direcao'] ?? 'asc';
+    return ($ordemAtual === $coluna && $direcaoAtual === 'asc') ? 'desc' : 'asc';
+}
+
+function iconeOrdenacao($coluna)
+{
+    $ordemAtual = $_GET['ordem'] ?? '';
+    $direcaoAtual = $_GET['direcao'] ?? 'asc';
+    if ($ordemAtual === $coluna) {
+        return $direcaoAtual === 'asc' ? '↑' : '↓';
+    }
+    return '';
+}
+
+function urlOrdenar($coluna)
+{
+    $direcao = novaDirecao($coluna);
+    $query = $_GET;
+    $query['ordem'] = $coluna;
+    $query['direcao'] = $direcao;
+    return '?' . http_build_query($query);
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -396,6 +438,20 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
       font-weight: 500;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
+    .order-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: inherit;
+    }
+    .order-link:visited, .order-link:active, .order-link:focus {
+      color: inherit;
+      text-decoration: none;
+    }
+    .order-link:hover {
+      color: #1e293b;
+      text-decoration: underline dotted;
+    }
   </style>
 </head>
 
@@ -539,12 +595,12 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <table class="suppliers-table">
               <thead>
                 <tr>
-                  <th>Nome</th>
-                  <th>Atividade</th>
-                  <th>Contato</th>
-                  <th>Representante</th>
-                  <th>Email Representante</th>
-                  <th>Endereço</th>
+                  <th><a class="order-link" href="<?= urlOrdenar('nome_empresa') ?>">Nome <?= iconeOrdenacao('nome_empresa') ?></a></th>
+                  <th><a class="order-link" href="<?= urlOrdenar('atividade') ?>">Atividade <?= iconeOrdenacao('atividade') ?></a></th>
+                  <th><a class="order-link" href="<?= urlOrdenar('telefone_representante') ?>">Contato <?= iconeOrdenacao('telefone_representante') ?></a></th>
+                  <th><a class="order-link" href="<?= urlOrdenar('nome_representante') ?>">Representante <?= iconeOrdenacao('nome_representante') ?></a></th>
+                  <th><a class="order-link" href="<?= urlOrdenar('email_representante') ?>">Email Representante <?= iconeOrdenacao('email_representante') ?></a></th>
+                  <th><a class="order-link" href="<?= urlOrdenar('endereco') ?>">Endereço <?= iconeOrdenacao('endereco') ?></a></th>
                 </tr>
               </thead>
               <tbody>

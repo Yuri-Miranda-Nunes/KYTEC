@@ -27,9 +27,51 @@ function temPermissao($permissao)
 
 require_once '../conexao.php';
 $bd = new BancoDeDados();
-$sql = "SELECT * FROM usuarios ORDER BY nome ASC";
+
+// Parâmetros de ordenação
+$ordem = $_GET['ordem'] ?? 'nome';
+$direcao = $_GET['direcao'] ?? 'asc';
+
+// Colunas permitidas para ordenação (segurança)
+$colunasPermitidas = ['nome', 'email', 'perfil', 'ativo'];
+
+// Validar ordem e direção
+if (!in_array($ordem, $colunasPermitidas)) {
+    $ordem = 'nome';
+}
+if (!in_array($direcao, ['asc', 'desc'])) {
+    $direcao = 'asc';
+}
+
+$sql = "SELECT * FROM usuarios ORDER BY {$ordem} {$direcao}";
 $stmt = $bd->pdo->query($sql);
 $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+function novaDirecao($coluna)
+{
+    $ordemAtual = $_GET['ordem'] ?? '';
+    $direcaoAtual = $_GET['direcao'] ?? 'asc';
+    return ($ordemAtual === $coluna && $direcaoAtual === 'asc') ? 'desc' : 'asc';
+}
+
+function iconeOrdenacao($coluna)
+{
+    $ordemAtual = $_GET['ordem'] ?? '';
+    $direcaoAtual = $_GET['direcao'] ?? 'asc';
+    if ($ordemAtual === $coluna) {
+        return $direcaoAtual === 'asc' ? '↑' : '↓';
+    }
+    return '';
+}
+
+function urlOrdenar($coluna)
+{
+    $direcao = novaDirecao($coluna);
+    $query = $_GET;
+    $query['ordem'] = $coluna;
+    $query['direcao'] = $direcao;
+    return '?' . http_build_query($query);
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -417,6 +459,20 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
         padding: 12px 8px;
       }
     }
+    .order-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: inherit;
+    }
+    .order-link:visited, .order-link:active, .order-link:focus {
+      color: inherit;
+      text-decoration: none;
+    }
+    .order-link:hover {
+      color: #1e293b;
+      text-decoration: underline dotted;
+    }
   </style>
 </head>
 
@@ -568,10 +624,10 @@ $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <table class="users-table">
               <thead>
                 <tr>
-                  <th>Nome</th>
-                  <th>Email</th>
-                  <th>Perfil</th>
-                  <th>Status</th>
+                  <th><a class="order-link" href="<?= urlOrdenar('nome') ?>">Nome <?= iconeOrdenacao('nome') ?></a></th>
+                  <th><a class="order-link" href="<?= urlOrdenar('email') ?>">Email <?= iconeOrdenacao('email') ?></a></th>
+                  <th><a class="order-link" href="<?= urlOrdenar('perfil') ?>">Perfil <?= iconeOrdenacao('perfil') ?></a></th>
+                  <th><a class="order-link" href="<?= urlOrdenar('ativo') ?>">Status <?= iconeOrdenacao('ativo') ?></a></th>
                   <th>Ações</th>
                 </tr>
               </thead>
