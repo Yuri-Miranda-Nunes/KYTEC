@@ -1,35 +1,37 @@
 <?php
-// search_api.php
+// class/class_search.php
 session_start();
 
+// Inclui funções comuns
+require_once '../includes/functions.php';
+
 // Verifica se está logado
-if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+if (!estaLogado()) {
     http_response_code(401);
+    header('Content-Type: application/json');
     echo json_encode(['error' => 'Não autorizado']);
     exit;
 }
 
-// Função para verificar permissões
-function temPermissao($permissao) {
-    return in_array($permissao, $_SESSION['permissoes'] ?? []);
-}
+// Define o content-type como JSON
+header('Content-Type: application/json; charset=utf-8');
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 $termo = trim($_GET['q'] ?? '');
 if (empty($termo) || strlen($termo) < 2) {
-    echo json_encode(['results' => []]);
+    echo json_encode(['results' => [], 'total' => 0, 'query' => $termo]);
     exit;
 }
 
-$bd = new BancoDeDados();
-$resultados = [];
-
 try {
+    $bd = new BancoDeDados();
+    $resultados = [];
+
     // Buscar produtos (se tem permissão)
     if (temPermissao('listar_produtos')) {
         $stmt = $bd->pdo->prepare("
-            SELECT id_produto, nome, codigo, tipo, estoque_atual, preco_unitario
+            SELECT id_produto, nome, codigo, tipo, estoque_atual, preco_unitario, estoque_minimo
             FROM produtos 
             WHERE (nome LIKE :termo OR codigo LIKE :termo OR descricao LIKE :termo) 
             AND ativo = 1
@@ -50,12 +52,12 @@ try {
         ]);
         
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $produto) {
-            $estoqueBaixo = $produto['estoque_atual'] <= 10;
+            $estoqueBaixo = $produto['estoque_atual'] <= ($produto['estoque_minimo'] ?? 10);
             $resultados[] = [
                 'id' => $produto['id_produto'],
-                'title' => $produto['nome'],
-                'subtitle' => "Código: {$produto['codigo']} • Estoque: {$produto['estoque_atual']} unid.",
-                'description' => "Tipo: " . ucfirst($produto['tipo']) . " • R$ " . number_format($produto['preco_unitario'], 2, ',', '.'),
+                'title' => sanitizar($produto['nome']),
+                'subtitle' => "Código: " . sanitizar($produto['codigo']) . " • Estoque: {$produto['estoque_atual']} unid.",
+                'description' => "Tipo: " . ucfirst(sanitizar($produto['tipo'])) . " • " . formatarMoeda($produto['preco_unitario']),
                 'icon' => 'fas fa-box',
                 'type' => 'produto',
                 'url' => 'read/focus_product.php?id=' . $produto['id_produto'],
@@ -88,12 +90,12 @@ try {
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fornecedor) {
         $resultados[] = [
             'id' => $fornecedor['id_fornecedor'],
-            'title' => $fornecedor['nome_empresa'],
-            'subtitle' => $fornecedor['atividade'],
-            'description' => $fornecedor['nome_representante'] ? "Representante: {$fornecedor['nome_representante']}" : null,
+            'title' => sanitizar($fornecedor['nome_empresa']),
+            'subtitle' => sanitizar($fornecedor['atividade']),
+            'description' => $fornecedor['nome_representante'] ? "Representante: " . sanitizar($fornecedor['nome_representante']) : null,
             'icon' => 'fas fa-truck',
             'type' => 'fornecedor',
-            'url' => 'read/read_supplier.php',
+            'url' => 'read/read_supplier.php?id=' . $fornecedor['id_fornecedor'],
             'badge' => null,
             'badgeClass' => null
         ];
@@ -123,12 +125,12 @@ try {
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $usuario) {
             $resultados[] = [
                 'id' => $usuario['id'],
-                'title' => $usuario['nome'],
-                'subtitle' => $usuario['email'],
-                'description' => "Perfil: " . ucfirst($usuario['perfil']),
+                'title' => sanitizar($usuario['nome']),
+                'subtitle' => sanitizar($usuario['email']),
+                'description' => "Perfil: " . ucfirst(sanitizar($usuario['perfil'])),
                 'icon' => 'fas fa-user',
                 'type' => 'usuario',
-                'url' => 'read/read_user.php',
+                'url' => 'read/read_user.php?id=' . $usuario['id'],
                 'badge' => !$usuario['ativo'] ? 'Inativo' : null,
                 'badgeClass' => !$usuario['ativo'] ? 'badge-danger' : null
             ];
@@ -204,9 +206,11 @@ try {
         'results' => $resultados,
         'total' => count($resultados),
         'query' => $termo
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
     error_log("Erro na pesquisa: " . $e->getMessage());
-    echo json_encode(['error' => 'Erro interno do servidor']);
+    http_response_code(500);
+    echo json_encode(['error' => 'Erro interno do servidor'], JSON_UNESCAPED_UNICODE);
 }
+?>
