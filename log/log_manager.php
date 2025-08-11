@@ -1,11 +1,13 @@
 <?php
-// log_manager.php
+require_once '../conexao.php'; // ajuste o caminho conforme sua organização
 class LogManager {
     private $pdo;
 
     public function __construct($pdo) {
         $this->pdo = $pdo;
     }
+
+ 
 
     /**
      * Registra um log geral no sistema
@@ -95,7 +97,7 @@ class LogManager {
     /**
      * Registra saída de produto do estoque
      */
-    public function registrarSaidaEstoque($produto_id, $usuario_id, $quantidade, $motivo = 'venda', $destino = null, $observacoes = null) {
+    public function registrarSaidaEstoque($produto_id, $usuario_id, $quantidade, $motivo = 'uso interno', $destino = null, $observacoes = null) {
         try {
             $stmt = $this->pdo->prepare("SELECT estoque_atual, nome FROM produtos WHERE id_produto = ?");
             $stmt->execute([$produto_id]);
@@ -218,78 +220,87 @@ class LogManager {
     public function buscarMovimentacoesEstoque($filtros = [], $limite = 50, $offset = 0) {
         $where = [];
         $params = [];
-
+    
+        // Construção dos filtros WHERE
         if (!empty($filtros['produto_id'])) {
             $where[] = "m.produto_id = ?";
             $params[] = $filtros['produto_id'];
         }
-
+    
         if (!empty($filtros['usuario_id'])) {
             $where[] = "m.usuario_id = ?";
             $params[] = $filtros['usuario_id'];
         }
-
+    
         if (!empty($filtros['tipo_movimentacao'])) {
             $where[] = "m.tipo_movimentacao = ?";
             $params[] = $filtros['tipo_movimentacao'];
         }
-
+    
         if (!empty($filtros['data_inicio'])) {
             $where[] = "DATE(m.criado_em) >= ?";
             $params[] = $filtros['data_inicio'];
         }
-
+    
         if (!empty($filtros['data_fim'])) {
             $where[] = "DATE(m.criado_em) <= ?";
             $params[] = $filtros['data_fim'];
         }
-
+    
         $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-
+    
+        // Query com placeholders para filtros, mas LIMIT e OFFSET nomeados
         $sql = "SELECT 
-                    m.*,
-                    DATE_FORMAT(m.criado_em, '%d/%m/%Y %H:%i:%s') as data_hora,
-                    p.nome as produto_nome,
-                    p.codigo as produto_codigo,
-                    u.nome as usuario_nome,
-                    f.nome as fornecedor_nome,
-                    CONCAT(
-                        UPPER(m.tipo_movimentacao), 
-                        ' de ', 
-                        m.quantidade, 
-                        ' unidades - ', 
-                        COALESCE(p.nome, CONCAT('Produto ID: ', m.produto_id))
-                    ) as descricao,
-                    CONCAT(
-                        'Movimentação: ', m.tipo_movimentacao, 
-                        ' de ', m.quantidade, ' unidades. ',
-                        'Estoque anterior: ', m.quantidade_anterior, 
-                        ', atual: ', m.quantidade_atual,
-                        CASE 
-                            WHEN m.motivo IS NOT NULL THEN CONCAT('. Motivo: ', m.motivo)
-                            ELSE ''
-                        END,
-                        CASE 
-                            WHEN m.observacoes IS NOT NULL THEN CONCAT('. Observações: ', m.observacoes)
-                            ELSE ''
-                        END
-                    ) as detalhes,
-                    m.tipo_movimentacao as acao,
-                    'movimentacoes_estoque' as tabela
-                FROM movimentacoes_estoque m
-                LEFT JOIN produtos p ON m.produto_id = p.id_produto
-                LEFT JOIN usuarios u ON m.usuario_id = u.id
-                LEFT JOIN fornecedores f ON m.fornecedor_id = f.id_fornecedor
-                {$whereClause}
-                ORDER BY m.criado_em DESC 
-                LIMIT ? OFFSET ?";
-
-        $params[] = $limite;
-        $params[] = $offset;
-
+                m.*,
+                DATE_FORMAT(m.criado_em, '%d/%m/%Y %H:%i:%s') as data_hora,
+                p.nome as produto_nome,
+                p.codigo as produto_codigo,
+                u.nome as usuario_nome,
+                f.nome as fornecedor_nome,
+                CONCAT(
+                    UPPER(m.tipo_movimentacao), 
+                    ' de ', 
+                    m.quantidade, 
+                    ' unidades - ', 
+                    COALESCE(p.nome, CONCAT('Produto ID: ', m.produto_id))
+                ) as descricao,
+                CONCAT(
+                    'Movimentação: ', m.tipo_movimentacao, 
+                    ' de ', m.quantidade, ' unidades. ',
+                    'Estoque anterior: ', m.quantidade_anterior, 
+                    ', atual: ', m.quantidade_atual,
+                    CASE 
+                        WHEN m.motivo IS NOT NULL THEN CONCAT('. Motivo: ', m.motivo)
+                        ELSE ''
+                    END,
+                    CASE 
+                        WHEN m.observacoes IS NOT NULL THEN CONCAT('. Observações: ', m.observacoes)
+                        ELSE ''
+                    END
+                ) as detalhes,
+                m.tipo_movimentacao as acao,
+                'movimentacoes_estoque' as tabela
+            FROM movimentacoes_estoque m
+            LEFT JOIN produtos p ON m.produto_id = p.id_produto
+            LEFT JOIN usuarios u ON m.usuario_id = u.id
+            LEFT JOIN fornecedores f ON m.fornecedor_id = f.id_fornecedor
+            {$whereClause}
+            ORDER BY m.criado_em DESC 
+            LIMIT :limite OFFSET :offset";
+    
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
-
+    
+        // Bind dos parâmetros dos filtros (posicionais)
+        foreach ($params as $index => $value) {
+            $stmt->bindValue($index + 1, $value);
+        }
+    
+        // Bind dos parâmetros LIMIT e OFFSET como inteiros
+        $stmt->bindValue(':limite', (int)$limite, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+    
+        $stmt->execute();
+    
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
