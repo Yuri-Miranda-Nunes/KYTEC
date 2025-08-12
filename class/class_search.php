@@ -24,9 +24,48 @@ if (empty($termo) || strlen($termo) < 2) {
     exit;
 }
 
+// Função para determinar o prefixo da URL baseado no referer
+function getUrlPrefix() {
+    // Método 1: Verificar parâmetro 'from' na URL
+    $from = $_GET['from'] ?? '';
+    if (!empty($from)) {
+        switch ($from) {
+            case 'dashboard':
+            case 'index':
+                return '';
+            case 'read':
+            case 'create':
+            case 'update':
+                return '../';
+            default:
+                return '';
+        }
+    }
+    
+    // Método 2: Verificar HTTP_REFERER
+    $referer = $_SERVER['HTTP_REFERER'] ?? '';
+    
+    // Se a busca foi feita do dashboard principal (index.php)
+    if (strpos($referer, '/index.php') !== false || 
+        (strpos($referer, '.php') === false && preg_match('/\/$/', $referer))) {
+        return '';
+    }
+    
+    // Se a busca foi feita de uma subpasta (read/, create/, etc.)
+    if (strpos($referer, '/read/') !== false || 
+        strpos($referer, '/create/') !== false || 
+        strpos($referer, '/update/') !== false) {
+        return '../';
+    }
+    
+    // Padrão: assumir que está na raiz
+    return '';
+}
+
 try {
     $bd = new BancoDeDados();
     $resultados = [];
+    $urlPrefix = getUrlPrefix();
 
     // Buscar produtos (se tem permissão)
     if (temPermissao('listar_produtos')) {
@@ -60,7 +99,7 @@ try {
                 'description' => "Tipo: " . ucfirst(sanitizar($produto['tipo'])) . " • " . formatarMoeda($produto['preco_unitario']),
                 'icon' => 'fas fa-box',
                 'type' => 'produto',
-                'url' => 'read/focus_product.php?id=' . $produto['id_produto'],
+                'url' => $urlPrefix . 'read/focus_product.php?id=' . $produto['id_produto'],
                 'badge' => $estoqueBaixo ? 'Estoque baixo' : null,
                 'badgeClass' => $estoqueBaixo ? 'badge-warning' : null
             ];
@@ -95,7 +134,7 @@ try {
             'description' => $fornecedor['nome_representante'] ? "Representante: " . sanitizar($fornecedor['nome_representante']) : null,
             'icon' => 'fas fa-truck',
             'type' => 'fornecedor',
-            'url' => 'read/read_supplier.php?id=' . $fornecedor['id_fornecedor'],
+            'url' => $urlPrefix . 'read/read_supplier.php?id=' . $fornecedor['id_fornecedor'],
             'badge' => null,
             'badgeClass' => null
         ];
@@ -130,7 +169,7 @@ try {
                 'description' => "Perfil: " . ucfirst(sanitizar($usuario['perfil'])),
                 'icon' => 'fas fa-user',
                 'type' => 'usuario',
-                'url' => 'read/read_user.php?id=' . $usuario['id'],
+                'url' => $urlPrefix . 'read/read_user.php?id=' . $usuario['id'],
                 'badge' => !$usuario['ativo'] ? 'Inativo' : null,
                 'badgeClass' => !$usuario['ativo'] ? 'badge-danger' : null
             ];
@@ -148,7 +187,7 @@ try {
                 'description' => 'Gerencie o estoque e visualize produtos',
                 'icon' => 'fas fa-boxes',
                 'type' => 'secao',
-                'url' => 'read/read_product.php'
+                'url' => $urlPrefix . 'read/read_product.php'
             ];
         }
         
@@ -159,7 +198,7 @@ try {
                 'description' => 'Formulário de cadastro de produtos',
                 'icon' => 'fas fa-plus',
                 'type' => 'secao',
-                'url' => 'create/create_product.php'
+                'url' => $urlPrefix . 'create/create_product.php'
             ];
         }
     }
@@ -171,7 +210,7 @@ try {
             'description' => 'Gerencie seus fornecedores',
             'icon' => 'fas fa-truck',
             'type' => 'secao',
-            'url' => 'read/read_supplier.php'
+            'url' => $urlPrefix . 'read/read_supplier.php'
         ];
     }
 
@@ -182,7 +221,7 @@ try {
             'description' => 'Administração de usuários e permissões',
             'icon' => 'fas fa-users',
             'type' => 'secao',
-            'url' => 'read/read_user.php'
+            'url' => $urlPrefix . 'read/read_user.php'
         ];
     }
 
@@ -193,7 +232,7 @@ try {
             'description' => 'Estatísticas e resumo geral',
             'icon' => 'fas fa-chart-line',
             'type' => 'secao',
-            'url' => 'index.php'
+            'url' => $urlPrefix . 'index.php'
         ];
     }
 
@@ -205,7 +244,11 @@ try {
     echo json_encode([
         'results' => $resultados,
         'total' => count($resultados),
-        'query' => $termo
+        'query' => $termo,
+        'debug_info' => [
+            'referer' => $_SERVER['HTTP_REFERER'] ?? 'not_set',
+            'url_prefix' => $urlPrefix
+        ]
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {

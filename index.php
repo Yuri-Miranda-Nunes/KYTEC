@@ -1054,7 +1054,7 @@ $usuario = getUsuarioLogado();
         });
 
         function performSearch(query) {
-            fetch(`class/class_search.php?q=${encodeURIComponent(query)}`)
+            fetch(`class/class_search.php?q=${encodeURIComponent(query)}&from=dashboard`)
                 .then(response => {
                     // Verificar se a resposta está ok
                     if (!response.ok) {
