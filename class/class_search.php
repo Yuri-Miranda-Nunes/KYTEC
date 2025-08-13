@@ -106,16 +106,17 @@ try {
         }
     }
 
-    // Buscar fornecedores
+    // Buscar fornecedores - ATUALIZADO PARA USAR VISUALIZAR.PHP
     $stmt = $bd->pdo->prepare("
-        SELECT id_fornecedor, nome_empresa, atividade, telefone_representante, nome_representante
+        SELECT id_fornecedor, nome_empresa, atividade, telefone_representante, nome_representante, cnpj
         FROM fornecedores 
-        WHERE nome_empresa LIKE :termo OR atividade LIKE :termo OR nome_representante LIKE :termo
+        WHERE nome_empresa LIKE :termo OR atividade LIKE :termo OR nome_representante LIKE :termo OR cnpj LIKE :termo
         ORDER BY 
             CASE 
                 WHEN nome_empresa LIKE :termo_exato THEN 1
                 WHEN nome_empresa LIKE :termo_inicio THEN 2
-                ELSE 3
+                WHEN cnpj LIKE :termo_exato THEN 3
+                ELSE 4
             END
         LIMIT 5
     ");
@@ -127,14 +128,41 @@ try {
     ]);
     
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fornecedor) {
+        // Formatar CNPJ se disponível
+        $cnpjFormatado = '';
+        if (!empty($fornecedor['cnpj'])) {
+            $cnpj = preg_replace('/\D/', '', $fornecedor['cnpj']);
+            if (strlen($cnpj) == 14) {
+                $cnpjFormatado = sprintf(
+                    '%s.%s.%s/%s-%s',
+                    substr($cnpj, 0, 2),
+                    substr($cnpj, 2, 3),
+                    substr($cnpj, 5, 3),
+                    substr($cnpj, 8, 4),
+                    substr($cnpj, 12, 2)
+                );
+            } else {
+                $cnpjFormatado = $fornecedor['cnpj'];
+            }
+        }
+        
+        // Construir descrição com informações disponíveis
+        $descricao = '';
+        if (!empty($fornecedor['nome_representante'])) {
+            $descricao = "Representante: " . sanitizar($fornecedor['nome_representante']);
+        }
+        if (!empty($cnpjFormatado)) {
+            $descricao .= (!empty($descricao) ? ' • ' : '') . "CNPJ: " . $cnpjFormatado;
+        }
+        
         $resultados[] = [
             'id' => $fornecedor['id_fornecedor'],
             'title' => sanitizar($fornecedor['nome_empresa']),
-            'subtitle' => sanitizar($fornecedor['atividade']),
-            'description' => $fornecedor['nome_representante'] ? "Representante: " . sanitizar($fornecedor['nome_representante']) : null,
+            'subtitle' => sanitizar($fornecedor['atividade'] ?? 'Atividade não informada'),
+            'description' => !empty($descricao) ? $descricao : 'Informações adicionais não disponíveis',
             'icon' => 'fas fa-truck',
             'type' => 'fornecedor',
-            'url' => $urlPrefix . 'read/read_supplier.php?id=' . $fornecedor['id_fornecedor'],
+            'url' => $urlPrefix . 'read/visualizar.php?id=' . $fornecedor['id_fornecedor'], // MUDANÇA PRINCIPAL
             'badge' => null,
             'badgeClass' => null
         ];
@@ -247,7 +275,8 @@ try {
         'query' => $termo,
         'debug_info' => [
             'referer' => $_SERVER['HTTP_REFERER'] ?? 'not_set',
-            'url_prefix' => $urlPrefix
+            'url_prefix' => $urlPrefix,
+            'from_param' => $_GET['from'] ?? 'not_set'
         ]
     ], JSON_UNESCAPED_UNICODE);
 
