@@ -606,7 +606,7 @@ function urlOrdenar($coluna)
 
       <!-- Action Buttons -->
       <div class="action-buttons">
-        <a href="cadastrar_usuario.php" class="btn btn-primary">
+        <a href="../create/create_user.php" class="btn btn-primary">
           <i class="fas fa-user-plus"></i>
           Novo Usuário
         </a>
@@ -654,12 +654,12 @@ function urlOrdenar($coluna)
                     </td>
                     <td>
                       <div style="display: flex; gap: 8px;">
-                        <a href="editar_usuario.php?id=<?= $u['id'] ?>"
+                        <a href="../update/update_user.php?id=<?= $u['id'] ?>"
                           style="color: #3b82f6; font-size: 0.875rem; text-decoration: none;"
                           title="Editar">
                           <i class="fas fa-edit"></i>
                         </a>
-                        <a href="../delete/delete_user.php?= $u['id'] ?>"
+                        <a href="../delete/delete_user.php?id=<?= $u['id'] ?>"
                           style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
                           title="Excluir"
                           onclick="return confirm('Tem certeza que deseja excluir este usuário?')">

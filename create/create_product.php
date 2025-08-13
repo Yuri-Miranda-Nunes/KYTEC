@@ -24,7 +24,7 @@ require_once '../log\log_manager.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $bd = new BancoDeDados();
-        
+
         // Validar campos obrigatórios
         $nome = trim($_POST['nome'] ?? '');
         $codigo = trim($_POST['codigo'] ?? '');
@@ -65,19 +65,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $estoque_atual,
             $ativo
         ]);
-        
+
         $mensagem = "Produto cadastrado com sucesso!";
         $tipo_mensagem = "success";
-        
+
         // Limpar campos após sucesso
         $_POST = [];
-        
     } catch (Exception $e) {
         $mensagem = "Erro: " . $e->getMessage();
         $tipo_mensagem = "error";
     }
 }
-
 
 ?>
 <!DOCTYPE html>
@@ -828,9 +826,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 id="nome"
                                 name="nome"
                                 class="form-input"
-                                value="<?= htmlspecialchars($_POST['nome'] ?? '') ?>"
+                                pattern="[A-Za-zÀ-ÿ0-9\s\-]+"
+                                title="Somente letras, números, espaços e hífen"
                                 required
-                                placeholder="Ex: Mouse Gamer XYZ">
+                                placeholder="Parafuso">
                             <div class="input-hint">Nome que identificará o produto no sistema</div>
                         </div>
 
@@ -843,9 +842,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 id="codigo"
                                 name="codigo"
                                 class="form-input"
-                                value="<?= htmlspecialchars($_POST['codigo'] ?? '') ?>"
+                                pattern="[A-Za-zÀ-ÿ0-9\s\-]+"
+                                title="Somente letras, números, espaços e hífen"
                                 required
-                                placeholder="Ex: MGX001">
+                                placeholder="MCPARAFUS-0088">
                             <div class="input-hint">Código único para identificação</div>
                         </div>
 
@@ -880,7 +880,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 step="0.01"
                                 min="0"
                                 value="<?= htmlspecialchars($_POST['preco_unitario'] ?? '') ?>"
-                                placeholder="0,00">
+                                placeholder="0">
                             <div class="input-hint">Preço de custo do produto</div>
                         </div>
 
