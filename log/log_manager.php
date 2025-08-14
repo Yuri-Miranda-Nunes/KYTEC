@@ -1,14 +1,18 @@
 <?php
-require_once '../conexao.php'; // ajuste o caminho conforme sua organização
+require_once __DIR__ . '/../conexao.php'; // Caminho correto para a classe BancoDeDados
+
+// Cria o objeto de conexão
+$db = new BancoDeDados();
+$pdo = $db->pdo;
+
+// Agora cria o LogManager com a conexão
+$logManager = new LogManager($pdo); // ajuste o caminho conforme sua organização
 class LogManager {
     private $pdo;
 
     public function __construct($pdo) {
         $this->pdo = $pdo;
     }
-
- 
-
     /**
      * Registra um log geral no sistema
      */
@@ -33,63 +37,6 @@ class LogManager {
             ]);
         } catch (Exception $e) {
             error_log("Erro ao registrar log: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Registra movimentação de estoque
-     */
-    public function registrarMovimentacaoEstoque($dados) {
-        try {
-            $sql = "INSERT INTO movimentacoes_estoque (
-                        produto_id, usuario_id, tipo_movimentacao, quantidade, quantidade_anterior,
-                        quantidade_atual, motivo, destino, fornecedor_id, nota_fiscal, valor_unitario,
-                        observacoes, criado_em
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-
-            $stmt = $this->pdo->prepare($sql);
-            $resultado = $stmt->execute([
-                $dados['produto_id'],
-                $dados['usuario_id'],
-                $dados['tipo_movimentacao'],
-                $dados['quantidade'],
-                $dados['quantidade_anterior'],
-                $dados['quantidade_atual'],
-                $dados['motivo'] ?? null,
-                $dados['destino'] ?? null,
-                $dados['fornecedor_id'] ?? null,
-                $dados['nota_fiscal'] ?? null,
-                $dados['valor_unitario'] ?? null,
-                $dados['observacoes'] ?? null
-            ]);
-
-            // Buscar nome do produto para descrição
-            $stmt_produto = $this->pdo->prepare("SELECT nome FROM produtos WHERE id_produto = ?");
-            $stmt_produto->execute([$dados['produto_id']]);
-            $produto = $stmt_produto->fetch(PDO::FETCH_ASSOC);
-            $nome_produto = $produto['nome'] ?? 'Produto ID: ' . $dados['produto_id'];
-
-            // Criar descrição detalhada
-            $tipo_movimento = ucfirst($dados['tipo_movimentacao']);
-            $descricao = "{$tipo_movimento} de {$dados['quantidade']} unidades - {$nome_produto}";
-
-            // Também registra no log geral
-            $this->registrarLog(
-                $dados['usuario_id'],
-                strtoupper($dados['tipo_movimentacao']) . '_ESTOQUE',
-                'produtos',
-                $dados['produto_id'],
-                ['quantidade_anterior' => $dados['quantidade_anterior']],
-                ['quantidade_atual' => $dados['quantidade_atual']],
-                "Movimentação: {$dados['tipo_movimentacao']} de {$dados['quantidade']} unidades. Estoque anterior: {$dados['quantidade_anterior']}, atual: {$dados['quantidade_atual']}",
-                $descricao
-            );
-
-            return $resultado;
-
-        } catch (Exception $e) {
-            error_log("Erro ao registrar movimentação de estoque: " . $e->getMessage());
             return false;
         }
     }
@@ -156,63 +103,159 @@ class LogManager {
      */
     public function registrarEntradaEstoque($produto_id, $usuario_id, $quantidade, $fornecedor_id = null, $valor_unitario = null, $nota_fiscal = null, $observacoes = null) {
         try {
+            // Validações de entrada
             if (empty($produto_id) || empty($usuario_id) || !isset($quantidade) || $quantidade <= 0) {
                 throw new Exception("Dados insuficientes ou inválidos para registrar entrada de estoque.");
             }
-
-            $stmt = $this->pdo->prepare("SELECT estoque_atual, nome FROM produtos WHERE id_produto = ?");
+    
+            // Converter valores para tipos apropriados
+            $produto_id = (int) $produto_id;
+            $usuario_id = (int) $usuario_id;
+            $quantidade = (int) $quantidade;
+            $fornecedor_id = !empty($fornecedor_id) ? (int) $fornecedor_id : null;
+            $valor_unitario = !empty($valor_unitario) ? (float) $valor_unitario : 0.00;
+            $nota_fiscal = !empty($nota_fiscal) ? trim($nota_fiscal) : null;
+            $observacoes = !empty($observacoes) ? trim($observacoes) : null;
+    
+            // Buscar dados atuais do produto
+            $stmt = $this->pdo->prepare("SELECT estoque_atual, nome FROM produtos WHERE id_produto = ? AND ativo = 1");
             $stmt->execute([$produto_id]);
             $produto = $stmt->fetch(PDO::FETCH_ASSOC);
-
+    
             if (!$produto) {
-                throw new Exception("Produto não encontrado.");
+                throw new Exception("Produto não encontrado ou inativo.");
             }
-
+    
             $quantidade_anterior = (int) $produto['estoque_atual'];
-            $quantidade_nova = $quantidade_anterior + (int) $quantidade;
-            $nome_produto = $produto['nome'] ?? 'N/D';
-
+            $quantidade_nova = $quantidade_anterior + $quantidade;
+            $nome_produto = $produto['nome'];
+    
+            // Iniciar transação
             $this->pdo->beginTransaction();
-
-            $stmt = $this->pdo->prepare("UPDATE produtos SET estoque_atual = ?, atualizado_em = NOW() WHERE id_produto = ?");
-            $stmt->execute([$quantidade_nova, $produto_id]);
-
-            $dados_movimentacao = [
-                'produto_id' => $produto_id,
-                'usuario_id' => $usuario_id,
-                'tipo_movimentacao' => 'entrada',
-                'quantidade' => $quantidade,
+    
+            // 1. Atualizar estoque do produto
+            $stmt = $this->pdo->prepare("
+                UPDATE produtos 
+                SET estoque_atual = ?, 
+                    atualizado_em = NOW(), 
+                    usuario_atualizacao = ? 
+                WHERE id_produto = ?
+            ");
+            $stmt->execute([$quantidade_nova, $usuario_id, $produto_id]);
+    
+            if ($stmt->rowCount() === 0) {
+                throw new Exception("Falha ao atualizar o estoque do produto.");
+            }
+    
+            // 2. Registrar na tabela entradas_estoque
+            $stmt = $this->pdo->prepare("
+                INSERT INTO entradas_estoque 
+                (id_produto, id_fornecedor, quantidade, valor_unitario, data_entrada, nota_fiscal) 
+                VALUES (?, ?, ?, ?, NOW(), ?)
+            ");
+            $stmt->execute([$produto_id, $fornecedor_id, $quantidade, $valor_unitario, $nota_fiscal]);
+            $entrada_id = $this->pdo->lastInsertId();
+    
+            // 3. Registrar na tabela movimentacoes_estoque
+            $stmt = $this->pdo->prepare("
+                INSERT INTO movimentacoes_estoque 
+                (produto_id, usuario_id, tipo_movimentacao, quantidade, quantidade_anterior, quantidade_atual, 
+                 motivo, fornecedor_id, nota_fiscal, valor_unitario, observacoes, criado_em) 
+                VALUES (?, ?, 'entrada', ?, ?, ?, 'Entrada de estoque', ?, ?, ?, ?, NOW())
+            ");
+            $stmt->execute([
+                $produto_id, $usuario_id, $quantidade, $quantidade_anterior, $quantidade_nova, 
+                $fornecedor_id, $nota_fiscal, $valor_unitario, $observacoes
+            ]);
+            $movimentacao_id = $this->pdo->lastInsertId();
+    
+            // 4. Registrar no log
+            $dados_anteriores = json_encode(['quantidade_anterior' => $quantidade_anterior]);
+            $dados_novos = json_encode(['quantidade_atual' => $quantidade_nova]);
+            $detalhes = "Entrada de estoque: {$quantidade} unidades do produto ID {$produto_id} (nome: {$nome_produto}). " .
+                       "Estoque anterior: {$quantidade_anterior}, estoque atual: {$quantidade_nova}. " .
+                       "Fornecedor ID: " . ($fornecedor_id ?? 'N/D') . ", Nota Fiscal: " . ($nota_fiscal ?? 'N/D') . ".";
+    
+            $stmt = $this->pdo->prepare("
+                INSERT INTO logs 
+                (usuario_id, acao, tabela, registro_id, dados_anteriores, dados_novos, detalhes, 
+                 ip, user_agent, criado_em, descricao) 
+                VALUES (?, 'ENTRADA_ESTOQUE', 'produtos', ?, ?, ?, ?, ?, ?, NOW(), ?)
+            ");
+            
+            $ip = $_SERVER['REMOTE_ADDR'] ?? 'N/D';
+            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'N/D';
+            $descricao = "Entrada de {$quantidade} unidades - {$nome_produto}";
+            
+            $stmt->execute([
+                $usuario_id, $produto_id, $dados_anteriores, $dados_novos, $detalhes,
+                $ip, $user_agent, $descricao
+            ]);
+    
+            // Confirmar transação
+            $this->pdo->commit();
+    
+            return [
+                'sucesso' => true,
+                'entrada_id' => $entrada_id,
+                'movimentacao_id' => $movimentacao_id,
+                'produto_nome' => $nome_produto,
                 'quantidade_anterior' => $quantidade_anterior,
                 'quantidade_atual' => $quantidade_nova,
-                'motivo' => 'Entrada de estoque',
-                'fornecedor_id' => $fornecedor_id,
-                'nota_fiscal' => $nota_fiscal,
-                'valor_unitario' => $valor_unitario,
-                'observacoes' => $observacoes
+                'quantidade_adicionada' => $quantidade,
+                'valor_total' => $quantidade * $valor_unitario,
+                'data_entrada' => date('Y-m-d H:i:s')
             ];
-
-            $detalhes = sprintf(
-                "Entrada de estoque: %d unidades do produto '%s' (ID: %d). Estoque anterior: %d, estoque atual: %d. Fornecedor ID: %s, Nota Fiscal: %s.",
-                (int)$quantidade,
-                $nome_produto,
-                $produto_id,
-                $quantidade_anterior,
-                $quantidade_nova,
-                $fornecedor_id ?? 'N/D',
-                $nota_fiscal ?? 'N/D'
-            );
-
-            $this->registrarMovimentacaoEstoque($dados_movimentacao);
-
-            $this->pdo->commit();
-            return true;
-
+    
         } catch (Exception $e) {
-            $this->pdo->rollBack();
+            // Rollback em caso de erro
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            
             error_log("Erro ao registrar entrada de estoque: " . $e->getMessage());
-            return false;
+            
+            return [
+                'sucesso' => false,
+                'erro' => $e->getMessage()
+            ];
         }
     }
+    
+    public function registrarMovimentacaoEstoque($dados) {
+        try {
+            $sql = "INSERT INTO movimentacoes_estoque 
+                    (produto_id, usuario_id, tipo_movimentacao, quantidade, quantidade_anterior, 
+                     quantidade_atual, motivo, destino, fornecedor_id, nota_fiscal, valor_unitario, 
+                     observacoes, criado_em) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+    
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([
+                $dados['produto_id'],
+                $dados['usuario_id'],
+                $dados['tipo_movimentacao'],
+                $dados['quantidade'],
+                $dados['quantidade_anterior'],
+                $dados['quantidade_atual'],
+                $dados['motivo'] ?? '',
+                $dados['destino'] ?? null,
+                $dados['fornecedor_id'] ?? null,
+                $dados['nota_fiscal'] ?? null,
+                $dados['valor_unitario'] ?? 0,
+                $dados['observacoes'] ?? ''
+            ]);
+    
+            return $this->pdo->lastInsertId();
+    
+        } catch (PDOException $e) {
+            error_log("Erro ao registrar movimentação: " . $e->getMessage());
+            throw new Exception("Erro ao registrar movimentação de estoque.");
+        }
+    }
+    
+    
+
 
     /**
      * Busca movimentações de estoque com filtros
@@ -249,9 +292,22 @@ class LogManager {
     
         $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
     
-        // Query com placeholders para filtros, mas LIMIT e OFFSET nomeados
+        // Query ajustada - usando 'id' em vez de 'id_movimentacao'
         $sql = "SELECT 
-                m.*,
+                m.id,
+                m.produto_id,
+                m.usuario_id,
+                m.tipo_movimentacao,
+                m.quantidade,
+                m.quantidade_anterior,
+                m.quantidade_atual,
+                m.motivo,
+                m.destino,
+                m.fornecedor_id,
+                m.nota_fiscal,
+                m.valor_unitario,
+                m.observacoes,
+                m.criado_em,
                 DATE_FORMAT(m.criado_em, '%d/%m/%Y %H:%i:%s') as data_hora,
                 p.nome as produto_nome,
                 p.codigo as produto_codigo,
@@ -288,20 +344,31 @@ class LogManager {
             ORDER BY m.criado_em DESC 
             LIMIT :limite OFFSET :offset";
     
-        $stmt = $this->pdo->prepare($sql);
+        try {
+            $stmt = $this->pdo->prepare($sql);
     
-        // Bind dos parâmetros dos filtros (posicionais)
-        foreach ($params as $index => $value) {
-            $stmt->bindValue($index + 1, $value);
+            // Bind dos parâmetros dos filtros (posicionais)
+            foreach ($params as $index => $value) {
+                $stmt->bindValue($index + 1, $value);
+            }
+    
+            // Bind dos parâmetros LIMIT e OFFSET como inteiros
+            $stmt->bindValue(':limite', (int)$limite, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+    
+            $stmt->execute();
+            
+            $resultado = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Debug log
+            error_log("Busca movimentações - Filtros: " . json_encode($filtros) . " - Encontrados: " . count($resultado));
+            
+            return $resultado;
+            
+        } catch (PDOException $e) {
+            error_log("Erro na busca de movimentações: " . $e->getMessage());
+            return [];
         }
-    
-        // Bind dos parâmetros LIMIT e OFFSET como inteiros
-        $stmt->bindValue(':limite', (int)$limite, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
-    
-        $stmt->execute();
-    
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**

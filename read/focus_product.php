@@ -42,6 +42,7 @@ try {
     exit;
 }
 
+
 // Função para formatar preço
 function formatarPreco($preco)
 {
@@ -71,7 +72,32 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
     }
     return 'stock-normal';
 }
-?>
+
+if (!empty($_SESSION['mensagem_sucesso'])): ?>
+    <div class="alert alert-success" style="padding: 10px;
+background-color: #d4edda; /* Verde claro para sucesso */
+color: #155724; /* Verde escuro para texto */
+border-radius: 5px;
+margin-bottom: 15px;
+border: 1px solid #c3e6cb;
+font-weight: 600;">
+        <?= $_SESSION['mensagem_sucesso'];
+        unset($_SESSION['mensagem_sucesso']); ?>
+    </div>
+<?php endif; ?>
+
+<?php if (!empty($_SESSION['mensagem_erro'])): ?>
+    <div class="alert alert-danger" style="padding: 10px;
+background-color: #f8d7da; /* Vermelho claro */
+color: #721c24; /* Vermelho escuro */
+border-radius: 5px;
+margin-bottom: 15px;
+border: 1px solid #f5c6cb;
+font-weight: 600;">
+        <?= $_SESSION['mensagem_erro'];
+        unset($_SESSION['mensagem_erro']); ?>
+    </div>
+<?php endif; ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -762,7 +788,7 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                         </span>
                     </div>
 
-                    
+
                 </div>
 
                 <!-- Informações Financeiras -->
@@ -865,29 +891,64 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                 </div>
 
                 <div class="info-card">
-                <form action="saida_estoque_confirm.php" method="POST" style="margin-top: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; max-width: 400px;">
-    <h3>Registrar Saída do Estoque</h3>
-    <input type="hidden" name="produto_id" value="<?= htmlspecialchars($produto['id_produto']) ?>">
-    <input type="hidden" name="usuario_id" value="<?= htmlspecialchars($_SESSION['usuario_id']) ?>">
+                    <form action="saida_estoque_confirm.php" method="POST" style="margin-top: 30px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; max-width: 400px;">
+                        <h3>Registrar Saída do Estoque</h3>
+                        <input type="hidden" name="produto_id" value="<?= htmlspecialchars($produto['id_produto']) ?>">
+                        <input type="hidden" name="usuario_id" value="<?= htmlspecialchars($_SESSION['usuario_id']) ?>">
 
-    <label for="quantidade">Quantidade:</label>
-    <input type="number" id="quantidade" name="quantidade" min="1" max="<?= $produto['estoque_atual'] ?>" required>
+                        <label for="quantidade">Quantidade:</label>
+                        <input type="number" id="quantidade" name="quantidade" min="1" max="<?= $produto['estoque_atual'] ?>" required>
 
-    <label for="motivo">Motivo:</label>
-    <input type="text" id="motivo" name="motivo" value="uso" required>
+                        <label for="motivo">Motivo:</label>
+                        <input type="text" id="motivo" name="motivo" value="uso" required>
 
-    <label for="destino">Destino (opcional):</label>
-    <input type="text" id="destino" name="destino">
+                        <label for="destino">Destino (opcional):</label>
+                        <input type="text" id="destino" name="destino">
 
-    <label for="observacoes">Observações (opcional):</label>
-    <textarea id="observacoes" name="observacoes" rows="3"></textarea>
+                        <label for="observacoes">Observações (opcional):</label>
+                        <textarea id="observacoes" name="observacoes" rows="3"></textarea>
 
-    <button type="submit" style="margin-top: 10px; background-color:#e74c3c; color: white; padding: 8px 16px; border:none; border-radius: 4px; cursor:pointer;">
-        Registrar Saída
-    </button>
-</form>
+                        <button type="submit" style="margin-top: 10px; background-color:#e74c3c; color: white; padding: 8px 16px; border:none; border-radius: 4px; cursor:pointer;">
+                            Registrar Saída
+                        </button>
+                    </form>
 
                 </div>
+                <div class="info-card">
+                    <h3>Registrar Entrada de Estoque</h3>
+
+                    <?php
+                    if (!empty($_SESSION['success'])) {
+                        echo '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+                        unset($_SESSION['success']);
+                    } elseif (!empty($_SESSION['error'])) {
+                        echo '<div class="alert alert-danger">' . $_SESSION['error'] . '</div>';
+                        unset($_SESSION['error']);
+                    }
+                    ?>
+
+                    <form action="processar_entrada.php" method="POST">
+                        <input type="hidden" name="produto_id" value="<?= htmlspecialchars($produto['id_produto']) ?>">
+
+                        <label for="quantidade">Quantidade:</label>
+                        <input type="number" id="quantidade" name="quantidade" min="1" required>
+
+                        <label for="fornecedor_id">Fornecedor (opcional):</label>
+                        <input type="text" id="fornecedor_id" name="fornecedor_id">
+
+                        <label for="valor_unitario">Valor Unitário (opcional):</label>
+                        <input type="number" step="0.01" id="valor_unitario" name="valor_unitario">
+
+                        <label for="nota_fiscal">Nota Fiscal (opcional):</label>
+                        <input type="text" id="nota_fiscal" name="nota_fiscal">
+
+                        <label for="observacoes">Observações:</label>
+                        <textarea id="observacoes" name="observacoes"></textarea>
+
+                        <button type="submit">Registrar Entrada</button>
+                    </form>
+                </div>
+
 
 
                 <!-- Descrição -->
@@ -901,7 +962,7 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                         <?= !empty($produto['descricao']) ? nl2br(htmlspecialchars($produto['descricao'])) : '<em style="color: #94a3b8;">Descrição não informada</em>' ?>
                     </div>
                 </div>
-                
+
             </div>
 
             <!-- Navigation Actions -->
@@ -925,7 +986,7 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                     <?php endif; ?>
                 </div>
             </div>
-            
+
         </main>
     </div>
 
