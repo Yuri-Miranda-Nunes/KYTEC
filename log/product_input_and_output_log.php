@@ -7,7 +7,12 @@ if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION[
     exit;
 }
 
-if (!in_array('listar_produtos', $_SESSION['permissoes'] ?? [])) {
+// Função para verificar permissões
+function temPermissao($permissao) {
+    return in_array($permissao, $_SESSION['permissoes'] ?? []);
+}
+
+if (!temPermissao('listar_produtos')) {
     echo "Acesso negado.";
     exit;
 }
@@ -20,6 +25,12 @@ $logManager = new LogManager($bd->pdo);
 
 // Buscar todas as movimentações de estoque
 $movimentacoes = $logManager->buscarMovimentacoesEstoque([], 100);
+
+// Função para determinar se a página atual está ativa
+function isActivePage($page) {
+    $current = basename($_SERVER['PHP_SELF']);
+    return $current === $page ? 'active' : '';
+}
 ?>
 
 <!DOCTYPE html>
@@ -29,7 +40,6 @@ $movimentacoes = $logManager->buscarMovimentacoesEstoque([], 100);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Movimentações de Estoque - Sistema de Estoque</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- COLE AQUI TODO O CSS DO SEU ARQUIVO ORIGINAL -->
     <style>
         * {
             margin: 0;
@@ -212,111 +222,13 @@ $movimentacoes = $logManager->buscarMovimentacoesEstoque([], 100);
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
         }
 
-        /* Filters */
-        .filters-section {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 24px;
-        }
-
-        .filters-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .filters-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .filter-label {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #374151;
-        }
-
-        .filter-input, .filter-select {
-            padding: 8px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 0.875rem;
-        }
-
-        .filter-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: #f1f5f9;
-            color: #64748b;
-            border: 1px solid #e2e8f0;
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 24px;
-        }
-
-        .tab {
-            padding: 12px 20px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            text-decoration: none;
-            color: #64748b;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .tab.active {
-            background: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
-        }
-
-        /* Logs Table */
+        /* Logs Section */
         .logs-section {
             background: white;
             border-radius: 12px;
             padding: 24px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
         }
 
         .section-title {
@@ -372,70 +284,153 @@ $movimentacoes = $logManager->buscarMovimentacoesEstoque([], 100);
             font-weight: 500;
         }
 
-        .action-create { background: #dcfce7; color: #16a34a; }
-        .action-update { background: #fef3c7; color: #d97706; }
-        .action-delete { background: #fee2e2; color: #dc2626; }
-        .action-login { background: #e0e7ff; color: #3730a3; }
-        .action-logout { background: #f3f4f6; color: #4b5563; }
         .action-entrada { background: #dcfce7; color: #16a34a; }
         .action-saida { background: #fee2e2; color: #dc2626; }
 
-        .details-toggle {
-            background: none;
-            border: none;
-            color: #3b82f6;
-            cursor: pointer;
-            font-size: 0.75rem;
-        }
-
-        .details-content {
-            display: none;
-            margin-top: 8px;
-            padding: 8px;
-            background: #f8fafc;
-            border-radius: 4px;
-            font-size: 0.75rem;
-        }
         .empty-state {
             text-align: center;
             padding: 40px 20px;
             color: #94a3b8;
             font-size: 1rem;
         }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-card strong {
+            color: #1e293b;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="dashboard">
+        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2><i class="fas fa-clipboard-list"></i> Sistema Estoque</h2>
+                <h2><i class="fas fa-boxes"></i> KYTEC</h2>
             </div>
+
             <nav class="sidebar-nav">
+                <!-- Dashboard -->
                 <div class="nav-section">
-                    <div class="nav-section-title">Menu</div>
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link"><i class="fas fa-home"></i> Início</a>
+                        <a href="../index.php" class="nav-link <?= isActivePage('index.php') ?>">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Produtos -->
+                <?php if (temPermissao('listar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Produtos</div>
+                        <div class="nav-item">
+                            <a href="../read/read_product.php" class="nav-link <?= isActivePage('read_product.php') ?>">
+                                <i class="fas fa-list"></i>
+                                <span>Listar Produtos</span>
+                            </a>
+                        </div>
+                        <?php if (temPermissao('cadastrar_produtos')): ?>
+                            <div class="nav-item">
+                                <a href="../create/create_product.php" class="nav-link <?= isActivePage('create_product.php') ?>">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Cadastrar Produto</span>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Fornecedores -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Fornecedores</div>
+                    <div class="nav-item">
+                        <a href="../read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
+                            <i class="fas fa-truck"></i>
+                            <span>Listar Fornecedores</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Logs -->
+                <?php if (temPermissao('listar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Logs</div>
+                        <div class="nav-item">
+                            <a href="product_input_and_output_log.php" class="nav-link <?= isActivePage('product_input_and_output_log.php') ?>">
+                                <i class="fas fa-history"></i>
+                                <span>Movimentações</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Usuários -->
+                <?php if (temPermissao('gerenciar_usuarios')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Usuários</div>
+                        <div class="nav-item">
+                            <a href="../read/read_user.php" class="nav-link <?= isActivePage('read_user.php') ?>">
+                                <i class="fas fa-users"></i>
+                                <span>Listar Usuários</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="../create/create_user.php" class="nav-link <?= isActivePage('create_user.php') ?>">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Cadastrar Usuário</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Sistema -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Sistema</div>
+                    <div class="nav-item">
+                        <a href="../perfil.php" class="nav-link <?= isActivePage('perfil.php') ?>">
+                            <i class="fas fa-user-circle"></i>
+                            <span>Meu Perfil</span>
+                        </a>
                     </div>
                     <div class="nav-item">
-                        <a href="cadastrar_prod.php" class="nav-link"><i class="fas fa-box"></i> Produtos</a>
+                        <a href="../logout.php" class="nav-link">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Sair</span>
+                        </a>
                     </div>
-                    <div class="nav-item">
-                        <a href="" class="nav-link"><i class="fas fa-warehouse"></i> Estoque</a>
-                    </div>
-                    <div class="nav-item">
-                        <a href="logs.php" class="nav-link active"><i class="fas fa-file-alt"></i> Logs</a>
-                    </div>
-                    <?php if(in_array('admin', $_SESSION['permissoes'] ?? [])): ?>
-                    <div class="nav-item">
-                        <a href="usuarios.php" class="nav-link"><i class="fas fa-users"></i> Usuários</a>
-                    </div>
-                    <?php endif; ?>
                 </div>
             </nav>
         </aside>
 
+        <!-- Main Content -->
         <main class="main-content">
-            <header class="header">
+            <!-- Header -->
+            <div class="header">
                 <div class="header-left">
                     <h1>Movimentações de Estoque</h1>
                     <p class="header-subtitle">Visualize todas as entradas e saídas do estoque</p>
@@ -443,102 +438,21 @@ $movimentacoes = $logManager->buscarMovimentacoesEstoque([], 100);
                 <div class="header-right">
                     <div class="user-info">
                         <div class="user-avatar">
-                            <?php
-                            $nomeUsuario = $_SESSION['usuario_nome'] ?? 'Usuário';
-                            $iniciais = implode('', array_map(function($n){ return strtoupper($n[0]); }, explode(' ', $nomeUsuario)));
-                            echo $iniciais;
-                            ?>
+                            <?= strtoupper(substr($_SESSION['usuario_nome'], 0, 1)) ?>
                         </div>
                         <div class="user-details">
-                            <h3><?=htmlspecialchars($nomeUsuario)?></h3>
-                            <p><?=htmlspecialchars($_SESSION['usuario_email'] ?? '')?></p>
+                            <h3><?= htmlspecialchars($_SESSION['usuario_nome']) ?></h3>
+                            <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
                         </div>
                     </div>
-                    <a href="logout.php" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</a>
+                    <a href="../logout.php" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Sair
+                    </a>
                 </div>
-            </header>
+            </div>
 
-            <section class="logs-section">
-                <div class="section-title">
-                    <i class="fas fa-exchange-alt"></i>
-                    Movimentações de Estoque
-                </div>
-                <div class="table-container">
-                    <?php if (count($movimentacoes) === 0): ?>
-                        <div class="empty-state">Nenhuma movimentação encontrada.</div>
-                    <?php else: ?>
-                        <table class="logs-table">
-            <thead>
-                <tr>
-                    <th>Data/Hora</th>
-                    <th>Usuário</th>
-                    <th>Produto</th>
-                    <th>Tipo</th>
-                    <th>Quantidade</th>
-                    <th>Estoque Anterior</th>
-                    <th>Estoque Atual</th>
-                    <th>Motivo</th>
-                    <th>Observações</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($movimentacoes as $mov): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($mov['data_hora'] ?? date('d/m/Y H:i:s', strtotime($mov['criado_em']))) ?></td>
-                        <td><?= htmlspecialchars($mov['usuario_nome'] ?? 'Sistema') ?></td>
-                            <td>
-                                <strong><?= htmlspecialchars($mov['produto_nome'] ?? 'Produto não encontrado') ?></strong>
-                                <?php if ($mov['produto_codigo']): ?>
-                                    <br><small style="color: #64748b;">Código: <?= htmlspecialchars($mov['produto_codigo']) ?></small>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php 
-                                $tipo = strtoupper($mov['tipo_movimentacao']);
-                                $class = ($tipo === 'ENTRADA') ? 'action-entrada' : 'action-saida';
-                                ?>
-                                <span class="action-badge <?= $class ?>">
-                                    <?= $tipo === 'ENTRADA' ? 'ENTRADA' : 'SAÍDA' ?>
-                                </span>
-                            </td>
-                            <td style="text-align: center; font-weight: bold;">
-                                <?= number_format($mov['quantidade'], 0, ',', '.') ?>
-                            </td>
-                            <td style="text-align: center;">
-                                <?= number_format($mov['quantidade_anterior'], 0, ',', '.') ?>
-                            </td>
-                            <td style="text-align: center; font-weight: bold;">
-                                <?= number_format($mov['quantidade_atual'], 0, ',', '.') ?>
-                            </td>
-                            <td><?= htmlspecialchars($mov['motivo'] ?? '-') ?></td>
-                            <td>
-                                <?php if ($mov['observacoes']): ?>
-                                    <?= htmlspecialchars($mov['observacoes']) ?>
-                                <?php endif; ?>
-                                
-                                <?php if ($mov['fornecedor_nome']): ?>
-                                    <br><small><strong>Fornecedor:</strong> <?= htmlspecialchars($mov['fornecedor_nome']) ?></small>
-                                <?php endif; ?>
-                                
-                                <?php if ($mov['nota_fiscal']): ?>
-                                    <br><small><strong>NF:</strong> <?= htmlspecialchars($mov['nota_fiscal']) ?></small>
-                                <?php endif; ?>
-                                
-                                <?php if ($mov['valor_unitario']): ?>
-                                    <br><small><strong>Valor Unit.:</strong> R$ <?= number_format($mov['valor_unitario'], 2, ',', '.') ?></small>
-                                <?php endif; ?>
-                                
-                                <?php if ($mov['destino']): ?>
-                                    <br><small><strong>Destino:</strong> <?= htmlspecialchars($mov['destino']) ?></small>
-                                <?php endif; ?>
-                            </td>
-                    </tr>
-                <?php endforeach; ?>
-                        </table>
-                    <?php endif; ?>
-                </div>
-            </section>
-
+            <!-- Resumo das Movimentações -->
             <section class="logs-section">
                 <div class="section-title">
                     <i class="fas fa-chart-bar"></i>
@@ -558,35 +472,120 @@ $movimentacoes = $logManager->buscarMovimentacoesEstoque([], 100);
                         $total_saidas += $mov['quantidade'];
                     }
                     
-                    $produtos_afetados[$mov['produto_id']] = $mov['produto_nome'];
+                    if (isset($mov['produto_id'])) {
+                        $produtos_afetados[$mov['produto_id']] = $mov['produto_nome'];
+                    }
                 }
+                
+                $saldo = $total_entradas - $total_saidas;
                 ?>
                 
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <strong>Total de Entradas:</strong><br>
+                        <span class="action-badge action-entrada"><?= number_format($total_entradas, 0, ',', '.') ?> unidades</span>
+                    </div>
+                    <div class="stat-card">
+                        <strong>Total de Saídas:</strong><br>
+                        <span class="action-badge action-saida"><?= number_format($total_saidas, 0, ',', '.') ?> unidades</span>
+                    </div>
+                    <div class="stat-card">
+                        <strong>Saldo:</strong><br>
+                        <span class="action-badge <?= $saldo >= 0 ? 'action-entrada' : 'action-saida' ?>">
+                            <?= number_format($saldo, 0, ',', '.') ?> unidades
+                        </span>
+                    </div>
+                    <div class="stat-card">
+                        <strong>Produtos Movimentados:</strong><br>
+                        <?= count($produtos_afetados) ?> produtos diferentes
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tabela de Movimentações -->
+            <section class="logs-section">
+                <div class="section-title">
+                    <i class="fas fa-exchange-alt"></i>
+                    Histórico de Movimentações
+                </div>
+                
                 <div class="table-container">
-                    <table class="logs-table">
-                        <tr>
-                            <td><strong>Total de Entradas:</strong></td>
-                            <td><span class="action-badge action-entrada"><?= number_format($total_entradas, 0, ',', '.') ?> unidades</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Total de Saídas:</strong></td>
-                            <td><span class="action-badge action-saida"><?= number_format($total_saidas, 0, ',', '.') ?> unidades</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Saldo:</strong></td>
-                            <td>
-                                <?php 
-                                $saldo = $total_entradas - $total_saidas;
-                                $class_saldo = $saldo >= 0 ? 'action-entrada' : 'action-saida';
-                                ?>
-                                <span class="action-badge <?= $class_saldo ?>"><?= number_format($saldo, 0, ',', '.') ?> unidades</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Produtos Movimentados:</strong></td>
-                            <td><?= count($produtos_afetados) ?> produtos diferentes</td>
-                        </tr>
-                    </table>
+                    <?php if (count($movimentacoes) === 0): ?>
+                        <div class="empty-state">
+                            <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>Nenhuma movimentação encontrada.</p>
+                        </div>
+                    <?php else: ?>
+                        <table class="logs-table">
+                            <thead>
+                                <tr>
+                                    <th>Data/Hora</th>
+                                    <th>Usuário</th>
+                                    <th>Produto</th>
+                                    <th>Tipo</th>
+                                    <th>Quantidade</th>
+                                    <th>Estoque Anterior</th>
+                                    <th>Estoque Atual</th>
+                                    <th>Motivo</th>
+                                    <th>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($movimentacoes as $mov): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($mov['data_hora'] ?? date('d/m/Y H:i:s', strtotime($mov['criado_em']))) ?></td>
+                                        <td><?= htmlspecialchars($mov['usuario_nome'] ?? 'Sistema') ?></td>
+                                        <td>
+                                            <strong><?= htmlspecialchars($mov['produto_nome'] ?? 'Produto não encontrado') ?></strong>
+                                            <?php if (!empty($mov['produto_codigo'])): ?>
+                                                <br><small style="color: #64748b;">Código: <?= htmlspecialchars($mov['produto_codigo']) ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php 
+                                            $tipo = strtoupper($mov['tipo_movimentacao']);
+                                            $class = ($tipo === 'ENTRADA') ? 'action-entrada' : 'action-saida';
+                                            ?>
+                                            <span class="action-badge <?= $class ?>">
+                                                <?= $tipo === 'ENTRADA' ? 'ENTRADA' : 'SAÍDA' ?>
+                                            </span>
+                                        </td>
+                                        <td style="text-align: center; font-weight: bold;">
+                                            <?= number_format($mov['quantidade'], 0, ',', '.') ?>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <?= number_format($mov['quantidade_anterior'] ?? 0, 0, ',', '.') ?>
+                                        </td>
+                                        <td style="text-align: center; font-weight: bold;">
+                                            <?= number_format($mov['quantidade_atual'] ?? 0, 0, ',', '.') ?>
+                                        </td>
+                                        <td><?= htmlspecialchars($mov['motivo'] ?? '-') ?></td>
+                                        <td>
+                                            <?php if (!empty($mov['observacoes'])): ?>
+                                                <?= htmlspecialchars($mov['observacoes']) ?>
+                                            <?php endif; ?>
+                                            
+                                            <?php if (!empty($mov['fornecedor_nome'])): ?>
+                                                <br><small><strong>Fornecedor:</strong> <?= htmlspecialchars($mov['fornecedor_nome']) ?></small>
+                                            <?php endif; ?>
+                                            
+                                            <?php if (!empty($mov['nota_fiscal'])): ?>
+                                                <br><small><strong>NF:</strong> <?= htmlspecialchars($mov['nota_fiscal']) ?></small>
+                                            <?php endif; ?>
+                                            
+                                            <?php if (!empty($mov['valor_unitario'])): ?>
+                                                <br><small><strong>Valor Unit.:</strong> R$ <?= number_format($mov['valor_unitario'], 2, ',', '.') ?></small>
+                                            <?php endif; ?>
+                                            
+                                            <?php if (!empty($mov['destino'])): ?>
+                                                <br><small><strong>Destino:</strong> <?= htmlspecialchars($mov['destino']) ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
                 </div>
             </section>
         </main>
