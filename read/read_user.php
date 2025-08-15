@@ -47,12 +47,33 @@ $sql = "SELECT * FROM usuarios ORDER BY {$ordem} {$direcao}";
 $stmt = $bd->pdo->query($sql);
 $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+function novaDirecao($coluna)
+{
+    $ordemAtual = $_GET['ordem'] ?? '';
+    $direcaoAtual = $_GET['direcao'] ?? 'asc';
+    return ($ordemAtual === $coluna && $direcaoAtual === 'asc') ? 'desc' : 'asc';
+}
 
-// Função para determinar se a página atual está ativa
+function iconeOrdenacao($coluna)
+{
+    $ordemAtual = $_GET['ordem'] ?? '';
+    $direcaoAtual = $_GET['direcao'] ?? 'asc';
+    if ($ordemAtual === $coluna) {
+        return $direcaoAtual === 'asc' ? '↑' : '↓';
+    }
+    return '';
+}
 function isActivePage($page) {
   $current = basename($_SERVER['PHP_SELF']);
   return $current === $page ? 'active' : '';
-
+}
+function urlOrdenar($coluna)
+{
+    $direcao = novaDirecao($coluna);
+    $query = $_GET;
+    $query['ordem'] = $coluna;
+    $query['direcao'] = $direcao;
+    return '?' . http_build_query($query);
 }
 ?>
 <!DOCTYPE html>

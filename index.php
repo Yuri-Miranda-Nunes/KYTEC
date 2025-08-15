@@ -11,6 +11,19 @@ if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION[
 }
 
 
+if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    header("Location: login.php");
+    exit;
+}
+ 
+
+verificarAutenticacao();
+ 
+require_once 'conexao.php';
+$bd = new BancoDeDados();
+$usuario = getUsuarioLogado();
+ 
+
 // Função para determinar se a página atual está ativa
 function isActivePage($page) {
     $current = basename($_SERVER['PHP_SELF']);
