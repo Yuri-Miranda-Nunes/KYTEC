@@ -1,62 +1,53 @@
 <?php
 session_start();
 
-// Configurações de resposta JSON
-header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
-
-// Verificar se o usuário está logado
-if (!isset($_SESSION['usuario_id'])) {
-    http_response_code(401);
-    echo json_encode([
-        'sucesso' => false,
-        'erro' => 'Usuário não autenticado'
-    ]);
+// Verifica se está logado
+if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    header("Location: ../login.php");
     exit;
 }
 
 // Verificar se a requisição é POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode([
-        'sucesso' => false,
-        'erro' => 'Método não permitido'
-    ]);
+    $_SESSION['mensagem_erro'] = 'Método de requisição inválido.';
+    header("Location: ../read/read_product.php");
     exit;
 }
 
 try {
-    // Incluir arquivos necessários
     require_once '../conexao.php';
-    require_once '../log/log_manager.php'; // ou onde estiver a classe que contém registrarEntradaEstoque
+    require_once '../log/log_manager.php';
 
-    // Obter dados da requisição
-    $input = json_decode(file_get_contents('php://input'), true);
-    
-    // Se não for JSON, tentar $_POST
-    if (!$input) {
-        $input = $_POST;
-    }
-
-    // Validar dados obrigatórios
-    $produto_id = isset($input['produto_id']) ? (int) $input['produto_id'] : null;
-    $quantidade = isset($input['quantidade']) ? (int) $input['quantidade'] : null;
-    
-    if (!$produto_id || !$quantidade || $quantidade <= 0) {
-        throw new Exception('Produto ID e quantidade são obrigatórios e devem ser válidos');
-    }
-
-    // Dados opcionais
-    $fornecedor_id = !empty($input['fornecedor_id']) ? (int) $input['fornecedor_id'] : null;
-    $valor_unitario = !empty($input['valor_unitario']) ? (float) $input['valor_unitario'] : null;
-    $nota_fiscal = !empty($input['nota_fiscal']) ? trim($input['nota_fiscal']) : null;
-    $observacoes = !empty($input['observacoes']) ? trim($input['observacoes']) : null;
+    // Obter dados do formulário
+    $produto_id = isset($_POST['produto_id']) ? (int) $_POST['produto_id'] : null;
+    $quantidade = isset($_POST['quantidade']) ? (int) $_POST['quantidade'] : null;
+    $fornecedor_id = !empty($_POST['fornecedor_id']) ? (int) $_POST['fornecedor_id'] : null;
+    $valor_unitario = !empty($_POST['valor_unitario']) ? (float) $_POST['valor_unitario'] : null;
+    $nota_fiscal = !empty($_POST['nota_fiscal']) ? trim($_POST['nota_fiscal']) : null;
+    $observacoes = !empty($_POST['observacoes']) ? trim($_POST['observacoes']) : null;
     
     $usuario_id = $_SESSION['usuario_id'];
 
-    // Verificar permissões do usuário (opcional - adapte conforme seu sistema)
+    // Validar dados obrigatórios
+    if (!$produto_id || !$quantidade || $quantidade <= 0) {
+        throw new Exception('Produto e quantidade são obrigatórios e devem ser válidos.');
+    }
+
+    // Instanciar classes necessárias
+    $banco = new BancoDeDados();
+    $pdo = $banco->pdo;
+    $logManager = new LogManager($pdo);
+
+    // Verificar se o produto existe
+    $stmt = $pdo->prepare("SELECT * FROM produtos WHERE id_produto = ? AND ativo = 1");
+    $stmt->execute([$produto_id]);
+    $produto = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$produto) {
+        throw new Exception('Produto não encontrado ou inativo.');
+    }
+
+    // Verificar permissões do usuário
     $stmt = $pdo->prepare("
         SELECT u.perfil, GROUP_CONCAT(p.nome_permissao) as permissoes
         FROM usuarios u
@@ -69,23 +60,37 @@ try {
     $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$usuario) {
-        throw new Exception('Usuário não encontrado ou inativo');
+        throw new Exception('Usuário não encontrado ou inativo.');
     }
 
-    // Verificar se tem permissão (admin sempre pode, outros precisam da permissão específica)
+    // Verificar permissão (admin sempre pode, outros precisam da permissão específica)
     $tem_permissao = ($usuario['perfil'] === 'admin') || 
                      strpos($usuario['permissoes'], 'cadastrar_produtos') !== false ||
                      strpos($usuario['permissoes'], 'editar_produtos') !== false;
 
     if (!$tem_permissao) {
-        throw new Exception('Usuário não possui permissão para registrar entradas de estoque');
+        throw new Exception('Usuário não possui permissão para registrar entradas de estoque.');
     }
 
-    // Criar instância da classe de estoque
-    $estoque = new LogManager($pdo); // Ajuste conforme sua estrutura de classes
+    // Verificar se fornecedor existe (se fornecido)
+    if ($fornecedor_id) {
+        $stmt = $pdo->prepare("SELECT id_fornecedor FROM fornecedores WHERE id_fornecedor = ? AND ativo = 1");
+        $stmt->execute([$fornecedor_id]);
+        if (!$stmt->fetch()) {
+            throw new Exception('Fornecedor não encontrado ou inativo.');
+        }
+    }
 
-    // Registrar a entrada
-    $resultado = $estoque->registrarEntradaEstoque(
+    // Usar o preço do produto se valor unitário não foi informado
+    if (!$valor_unitario) {
+        $valor_unitario = $produto['preco_unitario'];
+    }
+
+    // Calcular novo estoque
+    $novoEstoque = $produto['estoque_atual'] + $quantidade;
+
+    // Registrar a entrada usando o LogManager
+    $resultado = $logManager->registrarEntradaEstoque(
         $produto_id,
         $usuario_id,
         $quantidade,
@@ -95,15 +100,42 @@ try {
         $observacoes
     );
 
-    header("Location: ../read/focus_product.php?produto_id={$produto_id}");
+    if (!$resultado) {
+        throw new Exception('Erro ao registrar a entrada de estoque.');
+    }
+
+   
+    // Adicionar informações adicionais se disponíveis
+    if ($fornecedor_id) {
+        $stmt = $pdo->prepare("SELECT nome FROM fornecedores WHERE id_fornecedor = ?");
+        $stmt->execute([$fornecedor_id]);
+        $fornecedor = $stmt->fetch();
+        if ($fornecedor) {
+            $mensagemSucesso .= "<br>Fornecedor: " . htmlspecialchars($fornecedor['nome']);
+        }
+    }
+
+    if ($nota_fiscal) {
+        $mensagemSucesso .= "<br>Nota Fiscal: " . htmlspecialchars($nota_fiscal);
+    }
+
+    $_SESSION['mensagem_sucesso'] = $mensagemSucesso;
+
+    // Redirecionar de volta para a página do produto
+    header("Location: focus_product.php?id={$produto_id}");
+    exit;
 
 } catch (Exception $e) {
     error_log("Erro em processar_entrada.php: " . $e->getMessage());
     
-    http_response_code(500);
-    echo json_encode([
-        'sucesso' => false,
-        'erro' => $e->getMessage()
-    ]);
+    $_SESSION['mensagem_erro'] = $e->getMessage();
+    
+    // Redirecionar de volta para a página de entrada de estoque se houver produto_id
+    if (isset($produto_id) && $produto_id) {
+        header("Location: entrada_estoque.php?id={$produto_id}");
+    } else {
+        header("Location: ../read/read_product.php");
+    }
+    exit;
 }
 ?>
