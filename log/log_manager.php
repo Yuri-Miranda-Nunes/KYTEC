@@ -261,112 +261,96 @@ class LogManager {
      * Busca movimentações de estoque com filtros
      */
     public function buscarMovimentacoesEstoque($filtros = [], $limite = 50, $offset = 0) {
-        $where = [];
-        $params = [];
-    
-        // Construção dos filtros WHERE
-        if (!empty($filtros['produto_id'])) {
-            $where[] = "m.produto_id = ?";
-            $params[] = $filtros['produto_id'];
-        }
-    
-        if (!empty($filtros['usuario_id'])) {
-            $where[] = "m.usuario_id = ?";
-            $params[] = $filtros['usuario_id'];
-        }
-    
-        if (!empty($filtros['tipo_movimentacao'])) {
-            $where[] = "m.tipo_movimentacao = ?";
-            $params[] = $filtros['tipo_movimentacao'];
-        }
-    
-        if (!empty($filtros['data_inicio'])) {
-            $where[] = "DATE(m.criado_em) >= ?";
-            $params[] = $filtros['data_inicio'];
-        }
-    
-        if (!empty($filtros['data_fim'])) {
-            $where[] = "DATE(m.criado_em) <= ?";
-            $params[] = $filtros['data_fim'];
-        }
-    
-        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-    
-        // Query ajustada - usando 'id' em vez de 'id_movimentacao'
-        $sql = "SELECT 
-                m.id,
-                m.produto_id,
-                m.usuario_id,
-                m.tipo_movimentacao,
-                m.quantidade,
-                m.quantidade_anterior,
-                m.quantidade_atual,
-                m.motivo,
-                m.destino,
-                m.fornecedor_id,
-                m.nota_fiscal,
-                m.valor_unitario,
-                m.observacoes,
-                m.criado_em,
-                DATE_FORMAT(m.criado_em, '%d/%m/%Y %H:%i:%s') as data_hora,
-                p.nome as produto_nome,
-                p.codigo as produto_codigo,
-                u.nome as usuario_nome,
-                f.nome as fornecedor_nome,
-                CONCAT(
-                    UPPER(m.tipo_movimentacao), 
-                    ' de ', 
-                    m.quantidade, 
-                    ' unidades - ', 
-                    COALESCE(p.nome, CONCAT('Produto ID: ', m.produto_id))
-                ) as descricao,
-                CONCAT(
-                    'Movimentação: ', m.tipo_movimentacao, 
-                    ' de ', m.quantidade, ' unidades. ',
-                    'Estoque anterior: ', m.quantidade_anterior, 
-                    ', atual: ', m.quantidade_atual,
-                    CASE 
-                        WHEN m.motivo IS NOT NULL THEN CONCAT('. Motivo: ', m.motivo)
-                        ELSE ''
-                    END,
-                    CASE 
-                        WHEN m.observacoes IS NOT NULL THEN CONCAT('. Observações: ', m.observacoes)
-                        ELSE ''
-                    END
-                ) as detalhes,
-                m.tipo_movimentacao as acao,
-                'movimentacoes_estoque' as tabela
-            FROM movimentacoes_estoque m
-            LEFT JOIN produtos p ON m.produto_id = p.id_produto
-            LEFT JOIN usuarios u ON m.usuario_id = u.id
-            LEFT JOIN fornecedores f ON m.fornecedor_id = f.id_fornecedor
-            {$whereClause}
-            ORDER BY m.criado_em DESC 
-            LIMIT :limite OFFSET :offset";
-    
         try {
+            $where = [];
+            $params = [];
+    
+            // Construção dos filtros WHERE
+            if (!empty($filtros['produto_id'])) {
+                $where[] = "m.produto_id = ?";
+                $params[] = $filtros['produto_id'];
+            }
+    
+            if (!empty($filtros['usuario_id'])) {
+                $where[] = "m.usuario_id = ?";
+                $params[] = $filtros['usuario_id'];
+            }
+    
+            if (!empty($filtros['tipo_movimentacao'])) {
+                $where[] = "m.tipo_movimentacao = ?";
+                $params[] = $filtros['tipo_movimentacao'];
+            }
+    
+            if (!empty($filtros['data_inicio'])) {
+                $where[] = "DATE(m.criado_em) >= ?";
+                $params[] = $filtros['data_inicio'];
+            }
+    
+            if (!empty($filtros['data_fim'])) {
+                $where[] = "DATE(m.criado_em) <= ?";
+                $params[] = $filtros['data_fim'];
+            }
+    
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+    
+            // Query simplificada e mais robusta
+            $sql = "SELECT 
+                    m.id,
+                    m.produto_id,
+                    m.usuario_id,
+                    m.tipo_movimentacao,
+                    m.quantidade,
+                    m.quantidade_anterior,
+                    m.quantidade_atual,
+                    m.motivo,
+                    m.destino,
+                    m.fornecedor_id,
+                    m.nota_fiscal,
+                    m.valor_unitario,
+                    m.observacoes,
+                    m.criado_em,
+                    DATE_FORMAT(m.criado_em, '%d/%m/%Y %H:%i:%s') as data_hora,
+                    COALESCE(p.nome, CONCAT('Produto ID: ', m.produto_id)) as produto_nome,
+                    COALESCE(p.codigo, '') as produto_codigo,
+                    COALESCE(u.nome, 'Sistema') as usuario_nome,
+                    COALESCE(f.nome, '') as fornecedor_nome
+                FROM movimentacoes_estoque m
+                LEFT JOIN produtos p ON m.produto_id = p.id_produto
+                LEFT JOIN usuarios u ON m.usuario_id = u.id
+                LEFT JOIN fornecedores f ON m.fornecedor_id = f.id_fornecedor
+                {$whereClause}
+                ORDER BY m.criado_em DESC";
+    
+            // Preparar statement
             $stmt = $this->pdo->prepare($sql);
     
-            // Bind dos parâmetros dos filtros (posicionais)
+            // Bind dos parâmetros dos filtros
             foreach ($params as $index => $value) {
                 $stmt->bindValue($index + 1, $value);
             }
     
-            // Bind dos parâmetros LIMIT e OFFSET como inteiros
-            $stmt->bindValue(':limite', (int)$limite, PDO::PARAM_INT);
-            $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
-    
+            // Executar sem LIMIT primeiro para debug
+            error_log("SQL executada: " . $sql);
+            error_log("Parâmetros: " . json_encode($params));
+            
             $stmt->execute();
+            $todos_resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            $resultado = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            error_log("Total encontrado sem LIMIT: " . count($todos_resultados));
+    
+            // Aplicar LIMIT e OFFSET manualmente
+            $resultado_paginado = array_slice($todos_resultados, $offset, $limite);
             
-            // Debug log
-            error_log("Busca movimentações - Filtros: " . json_encode($filtros) . " - Encontrados: " . count($resultado));
+            error_log("Resultado paginado: " . count($resultado_paginado));
             
-            return $resultado;
-            
+            return $resultado_paginado;
+    
         } catch (PDOException $e) {
             error_log("Erro na busca de movimentações: " . $e->getMessage());
+            error_log("SQL que falhou: " . ($sql ?? 'SQL não definida'));
+            return [];
+        } catch (Exception $e) {
+            error_log("Erro geral na busca de movimentações: " . $e->getMessage());
             return [];
         }
     }

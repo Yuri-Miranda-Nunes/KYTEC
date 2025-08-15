@@ -20,11 +20,99 @@ if (!temPermissao('listar_produtos')) {
 require_once '../conexao.php';
 require_once 'log_manager.php';
 
-$bd = new BancoDeDados();
-$logManager = new LogManager($bd->pdo);
+try {
+    $bd = new BancoDeDados();
+    $pdo = $bd->pdo;
+    $logManager = new LogManager($pdo);
 
-// Buscar todas as movimentações de estoque
-$movimentacoes = $logManager->buscarMovimentacoesEstoque([], 100);
+    // Parâmetros de paginação
+    $pagina_atual = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+    $registros_por_pagina = 50;
+    $offset = ($pagina_atual - 1) * $registros_por_pagina;
+
+    // Filtros
+    $filtros = [];
+    if (!empty($_GET['tipo'])) {
+        $filtros['tipo_movimentacao'] = $_GET['tipo'];
+    }
+    if (!empty($_GET['data_inicio'])) {
+        $filtros['data_inicio'] = $_GET['data_inicio'];
+    }
+    if (!empty($_GET['data_fim'])) {
+        $filtros['data_fim'] = $_GET['data_fim'];
+    }
+    if (!empty($_GET['produto_id'])) {
+        $filtros['produto_id'] = (int)$_GET['produto_id'];
+    }
+
+    // Debug: vamos testar a query diretamente primeiro
+    $debug_query = "SELECT 
+        m.*,
+        DATE_FORMAT(m.criado_em, '%d/%m/%Y %H:%i:%s') as data_hora,
+        p.nome as produto_nome,
+        p.codigo as produto_codigo,
+        u.nome as usuario_nome
+    FROM movimentacoes_estoque m
+    LEFT JOIN produtos p ON m.produto_id = p.id_produto
+    LEFT JOIN usuarios u ON m.usuario_id = u.id
+    ORDER BY m.criado_em DESC 
+    LIMIT 10";
+    
+    $debug_stmt = $pdo->prepare($debug_query);
+    $debug_stmt->execute();
+    $debug_movimentacoes = $debug_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Agora buscar usando o LogManager
+    $movimentacoes = $logManager->buscarMovimentacoesEstoque($filtros, $registros_por_pagina, $offset);
+    
+    // Log de debug
+    error_log("Debug - Registros direto do banco: " . count($debug_movimentacoes));
+    error_log("Debug - Registros via LogManager: " . count($movimentacoes));
+    if (!empty($debug_movimentacoes)) {
+        error_log("Debug - Primeira movimentação direta: " . json_encode($debug_movimentacoes[0]));
+    }
+    if (!empty($movimentacoes)) {
+        error_log("Debug - Primeira movimentação LogManager: " . json_encode($movimentacoes[0]));
+    }
+
+    // Contagem total para paginação
+    $sql_count = "SELECT COUNT(*) FROM movimentacoes_estoque m WHERE 1=1";
+    $params_count = [];
+    
+    if (!empty($filtros['tipo_movimentacao'])) {
+        $sql_count .= " AND m.tipo_movimentacao = ?";
+        $params_count[] = $filtros['tipo_movimentacao'];
+    }
+    if (!empty($filtros['data_inicio'])) {
+        $sql_count .= " AND DATE(m.criado_em) >= ?";
+        $params_count[] = $filtros['data_inicio'];
+    }
+    if (!empty($filtros['data_fim'])) {
+        $sql_count .= " AND DATE(m.criado_em) <= ?";
+        $params_count[] = $filtros['data_fim'];
+    }
+    if (!empty($filtros['produto_id'])) {
+        $sql_count .= " AND m.produto_id = ?";
+        $params_count[] = $filtros['produto_id'];
+    }
+    
+    $stmt_count = $pdo->prepare($sql_count);
+    $stmt_count->execute($params_count);
+    $total_registros = $stmt_count->fetchColumn();
+    $total_paginas = ceil($total_registros / $registros_por_pagina);
+
+    // Buscar produtos para filtro
+    $stmt_produtos = $pdo->prepare("SELECT id_produto, nome FROM produtos WHERE ativo = 1 ORDER BY nome");
+    $stmt_produtos->execute();
+    $produtos = $stmt_produtos->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (Exception $e) {
+    error_log("Erro ao carregar movimentações: " . $e->getMessage());
+    $movimentacoes = [];
+    $total_registros = 0;
+    $total_paginas = 0;
+    $produtos = [];
+}
 
 // Função para determinar se a página atual está ativa
 function isActivePage($page) {
@@ -222,6 +310,80 @@ function isActivePage($page) {
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
         }
 
+        /* Filters */
+        .filters-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .filters-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .form-control {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
         /* Logs Section */
         .logs-section {
             background: white;
@@ -312,6 +474,53 @@ function isActivePage($page) {
             color: #1e293b;
         }
 
+        /* Paginação */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .page-link {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            color: #374151;
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .page-link:hover {
+            background: #f3f4f6;
+        }
+
+        .page-link.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .page-link.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+        }
+
+        .alert-warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .sidebar {
@@ -321,6 +530,10 @@ function isActivePage($page) {
 
             .main-content {
                 margin-left: 0;
+            }
+
+            .filters-form {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -452,7 +665,66 @@ function isActivePage($page) {
                 </div>
             </div>
 
+            <!-- Filtros -->
+            <section class="filters-section">
+                <form method="GET" class="filters-form">
+                    <div class="form-group">
+                        <label for="tipo">Tipo de Movimentação</label>
+                        <select name="tipo" id="tipo" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="entrada" <?= isset($_GET['tipo']) && $_GET['tipo'] === 'entrada' ? 'selected' : '' ?>>Entrada</option>
+                            <option value="saida" <?= isset($_GET['tipo']) && $_GET['tipo'] === 'saida' ? 'selected' : '' ?>>Saída</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="produto_id">Produto</label>
+                        <select name="produto_id" id="produto_id" class="form-control">
+                            <option value="">Todos os produtos</option>
+                            <?php foreach ($produtos as $produto): ?>
+                                <option value="<?= $produto['id_produto'] ?>" <?= isset($_GET['produto_id']) && $_GET['produto_id'] == $produto['id_produto'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($produto['nome']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="data_inicio">Data Início</label>
+                        <input type="date" name="data_inicio" id="data_inicio" class="form-control" 
+                               value="<?= htmlspecialchars($_GET['data_inicio'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="data_fim">Data Fim</label>
+                        <input type="date" name="data_fim" id="data_fim" class="form-control" 
+                               value="<?= htmlspecialchars($_GET['data_fim'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                            Filtrar
+                        </button>
+                        <a href="product_input_and_output_log.php" class="btn btn-secondary" style="margin-left: 8px;">
+                            <i class="fas fa-times"></i>
+                            Limpar
+                        </a>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Verificação de dados -->
+            <?php if (empty($movimentacoes) && $total_registros === 0): ?>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Nenhuma movimentação encontrada. Isso pode indicar que:
+                    <ul style="margin: 8px 0 0 20px;">
+                        <li>Não há dados na tabela <code>movimentacoes_estoque</code></li>
+                        <li>Os filtros aplicados não retornaram resultados</li>
+                        <li>Há um problema na estrutura do banco de dados</li>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
             <!-- Resumo das Movimentações -->
+            <?php if (!empty($movimentacoes)): ?>
             <section class="logs-section">
                 <div class="section-title">
                     <i class="fas fa-chart-bar"></i>
@@ -501,12 +773,18 @@ function isActivePage($page) {
                     </div>
                 </div>
             </section>
+            <?php endif; ?>
 
             <!-- Tabela de Movimentações -->
             <section class="logs-section">
                 <div class="section-title">
                     <i class="fas fa-exchange-alt"></i>
                     Histórico de Movimentações
+                    <?php if ($total_registros > 0): ?>
+                        <span style="font-size: 0.875rem; font-weight: normal; color: #64748b;">
+                            (<?= number_format($total_registros, 0, ',', '.') ?> registros encontrados)
+                        </span>
+                    <?php endif; ?>
                 </div>
                 
                 <div class="table-container">
@@ -527,7 +805,7 @@ function isActivePage($page) {
                                     <th>Estoque Anterior</th>
                                     <th>Estoque Atual</th>
                                     <th>Motivo</th>
-                                    <th>Observações</th>
+                                    <th>Detalhes</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -562,23 +840,27 @@ function isActivePage($page) {
                                         <td><?= htmlspecialchars($mov['motivo'] ?? '-') ?></td>
                                         <td>
                                             <?php if (!empty($mov['observacoes'])): ?>
-                                                <?= htmlspecialchars($mov['observacoes']) ?>
+                                                <div><strong>Obs:</strong> <?= htmlspecialchars($mov['observacoes']) ?></div>
                                             <?php endif; ?>
                                             
                                             <?php if (!empty($mov['fornecedor_nome'])): ?>
-                                                <br><small><strong>Fornecedor:</strong> <?= htmlspecialchars($mov['fornecedor_nome']) ?></small>
+                                                <div><small><strong>Fornecedor:</strong> <?= htmlspecialchars($mov['fornecedor_nome']) ?></small></div>
                                             <?php endif; ?>
                                             
                                             <?php if (!empty($mov['nota_fiscal'])): ?>
-                                                <br><small><strong>NF:</strong> <?= htmlspecialchars($mov['nota_fiscal']) ?></small>
+                                                <div><small><strong>NF:</strong> <?= htmlspecialchars($mov['nota_fiscal']) ?></small></div>
                                             <?php endif; ?>
                                             
-                                            <?php if (!empty($mov['valor_unitario'])): ?>
-                                                <br><small><strong>Valor Unit.:</strong> R$ <?= number_format($mov['valor_unitario'], 2, ',', '.') ?></small>
+                                            <?php if (!empty($mov['valor_unitario']) && $mov['valor_unitario'] > 0): ?>
+                                                <div><small><strong>Valor Unit.:</strong> R$ <?= number_format($mov['valor_unitario'], 2, ',', '.') ?></small></div>
                                             <?php endif; ?>
                                             
                                             <?php if (!empty($mov['destino'])): ?>
-                                                <br><small><strong>Destino:</strong> <?= htmlspecialchars($mov['destino']) ?></small>
+                                                <div><small><strong>Destino:</strong> <?= htmlspecialchars($mov['destino']) ?></small></div>
+                                            <?php endif; ?>
+                                            
+                                            <?php if (empty($mov['observacoes']) && empty($mov['fornecedor_nome']) && empty($mov['nota_fiscal']) && empty($mov['destino']) && (empty($mov['valor_unitario']) || $mov['valor_unitario'] == 0)): ?>
+                                                <span style="color: #94a3b8;">-</span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
@@ -587,8 +869,218 @@ function isActivePage($page) {
                         </table>
                     <?php endif; ?>
                 </div>
+
+                <!-- Paginação -->
+                <?php if ($total_paginas > 1): ?>
+                    <div class="pagination">
+                        <?php
+                        $query_params = $_GET;
+                        ?>
+                        
+                        <!-- Primeira página -->
+                        <?php if ($pagina_atual > 1): ?>
+                            <?php
+                            $query_params['pagina'] = 1;
+                            $url = 'product_input_and_output_log.php?' . http_build_query($query_params);
+                            ?>
+                            <a href="<?= $url ?>" class="page-link">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        <?php else: ?>
+                            <span class="page-link disabled">
+                                <i class="fas fa-angle-double-left"></i>
+                            </span>
+                        <?php endif; ?>
+
+                        <!-- Página anterior -->
+                        <?php if ($pagina_atual > 1): ?>
+                            <?php
+                            $query_params['pagina'] = $pagina_atual - 1;
+                            $url = 'product_input_and_output_log.php?' . http_build_query($query_params);
+                            ?>
+                            <a href="<?= $url ?>" class="page-link">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        <?php else: ?>
+                            <span class="page-link disabled">
+                                <i class="fas fa-angle-left"></i>
+                            </span>
+                        <?php endif; ?>
+
+                        <!-- Páginas numeradas -->
+                        <?php
+                        $inicio = max(1, $pagina_atual - 2);
+                        $fim = min($total_paginas, $pagina_atual + 2);
+
+                        for ($i = $inicio; $i <= $fim; $i++):
+                        ?>
+                            <?php if ($i == $pagina_atual): ?>
+                                <span class="page-link active"><?= $i ?></span>
+                            <?php else: ?>
+                                <?php
+                                $query_params['pagina'] = $i;
+                                $url = 'product_input_and_output_log.php?' . http_build_query($query_params);
+                                ?>
+                                <a href="<?= $url ?>" class="page-link"><?= $i ?></a>
+                            <?php endif; ?>
+                        <?php endfor; ?>
+
+                        <!-- Próxima página -->
+                        <?php if ($pagina_atual < $total_paginas): ?>
+                            <?php
+                            $query_params['pagina'] = $pagina_atual + 1;
+                            $url = 'product_input_and_output_log.php?' . http_build_query($query_params);
+                            ?>
+                            <a href="<?= $url ?>" class="page-link">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        <?php else: ?>
+                            <span class="page-link disabled">
+                                <i class="fas fa-angle-right"></i>
+                            </span>
+                        <?php endif; ?>
+
+                        <!-- Última página -->
+                        <?php if ($pagina_atual < $total_paginas): ?>
+                            <?php
+                            $query_params['pagina'] = $total_paginas;
+                            $url = 'product_input_and_output_log.php?' . http_build_query($query_params);
+                            ?>
+                            <a href="<?= $url ?>" class="page-link">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        <?php else: ?>
+                            <span class="page-link disabled">
+                                <i class="fas fa-angle-double-right"></i>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 12px; color: #64748b; font-size: 0.875rem;">
+                        Página <?= $pagina_atual ?> de <?= $total_paginas ?> 
+                        (<?= number_format($total_registros, 0, ',', '.') ?> registros no total)
+                    </div>
+                <?php endif; ?>
             </section>
+
+            <!-- Debug detalhado -->
+            <section class="logs-section">
+                <div class="section-title">
+                    <i class="fas fa-bug"></i>
+                    Informações de Debug (sempre visível para diagnóstico)
+                </div>
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 0.8rem;">
+                    <div style="background: #e3f2fd; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                        <strong>🔍 DIAGNÓSTICO:</strong><br>
+                        <strong>Total de registros encontrados:</strong> <?= $total_registros ?><br>
+                        <strong>Registros via busca direta:</strong> <?= count($debug_movimentacoes ?? []) ?><br>
+                        <strong>Registros via LogManager:</strong> <?= count($movimentacoes) ?><br>
+                        <strong>Página atual:</strong> <?= $pagina_atual ?><br>
+                        <strong>Offset:</strong> <?= $offset ?><br>
+                    </div>
+                    
+                    <?php if (!empty($debug_movimentacoes)): ?>
+                        <div style="background: #e8f5e8; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                            <strong>✅ BUSCA DIRETA (primeiros 10 registros encontrados):</strong><br>
+                            <pre style="max-height: 200px; overflow-y: auto; font-size: 0.7rem;">
+<?= json_encode(array_slice($debug_movimentacoes, 0, 3), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ?>
+                            </pre>
+                        </div>
+                    <?php else: ?>
+                        <div style="background: #ffebee; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                            <strong>❌ BUSCA DIRETA NÃO RETORNOU DADOS</strong><br>
+                            Isso indica que a tabela movimentacoes_estoque está vazia ou não existe.
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if (!empty($movimentacoes)): ?>
+                        <div style="background: #e8f5e8; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                            <strong>✅ LOGMANAGER RETORNOU DADOS:</strong><br>
+                            <pre style="max-height: 200px; overflow-y: auto; font-size: 0.7rem;">
+<?= json_encode(array_slice($movimentacoes, 0, 2), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ?>
+                            </pre>
+                        </div>
+                    <?php else: ?>
+                        <div style="background: #ffebee; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                            <strong>❌ LOGMANAGER NÃO RETORNOU DADOS</strong><br>
+                            O problema está na função buscarMovimentacoesEstoque do LogManager.
+                        </div>
+                    <?php endif; ?>
+                    
+                    <div style="background: #fff3e0; padding: 12px; margin-bottom: 12px; border-radius: 4px;">
+                        <strong>🔧 FILTROS APLICADOS:</strong><br>
+                        <?= json_encode($filtros, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ?>
+                    </div>
+                    
+                    <div style="background: #fce4ec; padding: 12px; border-radius: 4px;">
+                        <strong>📊 VERIFICAÇÃO DA TABELA:</strong><br>
+                        <?php
+                        try {
+                            $check_table = $pdo->query("SHOW TABLES LIKE 'movimentacoes_estoque'");
+                            $table_exists = $check_table->rowCount() > 0;
+                            echo "Tabela movimentacoes_estoque existe: " . ($table_exists ? "SIM" : "NÃO") . "<br>";
+                            
+                            if ($table_exists) {
+                                $check_columns = $pdo->query("DESCRIBE movimentacoes_estoque");
+                                $columns = $check_columns->fetchAll(PDO::FETCH_ASSOC);
+                                echo "Colunas da tabela:<br>";
+                                foreach ($columns as $col) {
+                                    echo "- " . $col['Field'] . " (" . $col['Type'] . ")<br>";
+                                }
+                                
+                                $count_all = $pdo->query("SELECT COUNT(*) FROM movimentacoes_estoque")->fetchColumn();
+                                echo "<br>Total de registros na tabela: " . $count_all;
+                            }
+                        } catch (Exception $e) {
+                            echo "Erro ao verificar tabela: " . $e->getMessage();
+                        }
+                        ?>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Rodapé com informações adicionais -->
+            <div style="text-align: center; color: #94a3b8; font-size: 0.8rem; margin-top: 40px; padding: 20px;">
+                <p>Sistema de Controle de Estoque - KYTEC</p>
+                <p>Para problemas técnicos, adicione <code>?debug=1</code> na URL para ver informações de debug</p>
+            </div>
         </main>
     </div>
+
+    <script>
+        // Script para melhorar a UX
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-submit do formulário quando mudar o select de tipo
+            const tipoSelect = document.getElementById('tipo');
+            const produtoSelect = document.getElementById('produto_id');
+            
+            // Opcional: submeter automaticamente quando alterar filtros principais
+            // tipoSelect.addEventListener('change', function() {
+            //     this.form.submit();
+            // });
+            
+            // Destacar linha da tabela ao passar o mouse
+            const tableRows = document.querySelectorAll('.logs-table tbody tr');
+            tableRows.forEach(row => {
+                row.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#f1f5f9';
+                });
+                
+                row.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '';
+                });
+            });
+
+            // Confirmar limpeza de filtros
+            const clearBtn = document.querySelector('a[href="product_input_and_output_log.php"]');
+            if (clearBtn && (window.location.search.length > 0)) {
+                clearBtn.addEventListener('click', function(e) {
+                    if (!confirm('Deseja limpar todos os filtros aplicados?')) {
+                        e.preventDefault();
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
