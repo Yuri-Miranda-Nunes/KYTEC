@@ -119,7 +119,7 @@ try {
         $mensagemSucesso .= "<br>Nota Fiscal: " . htmlspecialchars($nota_fiscal);
     }
 
-    $_SESSION['mensagem_sucesso'] = $mensagemSucesso;
+
 
     // Redirecionar de volta para a página do produto
     header("Location: focus_product.php?id={$produto_id}");

@@ -10,10 +10,7 @@ if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION[
     exit;
 }
 
-// Função para verificar permissões
-function temPermissao($permissao) {
-    return in_array($permissao, $_SESSION['permissoes'] ?? []);
-}
+
 // Função para determinar se a página atual está ativa
 function isActivePage($page) {
     $current = basename($_SERVER['PHP_SELF']);
