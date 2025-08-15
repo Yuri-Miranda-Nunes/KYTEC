@@ -132,7 +132,7 @@ try {
         $_SESSION['permissoes'] = $permissoes_db;
         unset($_SESSION['erro']);
         
-        header('Location: index.php');
+        header('Location: ../index.php');
         exit;
     }
     
@@ -143,12 +143,12 @@ try {
         $_SESSION['erro'] = 'Senha incorreta!';
     }
     
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit;
     
 } catch (Exception $e) {
     $_SESSION['erro'] = 'Erro interno: ' . $e->getMessage();
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit;
 }
 ?>

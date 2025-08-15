@@ -196,6 +196,11 @@ function isActivePage($page) {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 24px;
+        }
+
+        .header-left {
+            flex-shrink: 0;
         }
 
         .header-left h1 {
@@ -210,10 +215,174 @@ function isActivePage($page) {
             font-size: 0.875rem;
         }
 
+        /* Search Bar Styles */
+        .search-container {
+            flex: 1;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px 12px 48px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 1rem;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .search-results.show {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .search-result-item:hover {
+            background: #f8fafc;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .search-result-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-result-title {
+            font-weight: 500;
+            color: #1e293b;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-result-subtitle {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+
+        .search-result-description {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .search-result-badge {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.625rem;
+            font-weight: 500;
+        }
+
+        .search-result-badge.badge-warning {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .search-result-badge.badge-danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .search-no-results {
+            padding: 24px;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        .search-loading {
+            padding: 16px;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         .header-right {
             display: flex;
             align-items: center;
             gap: 16px;
+            flex-shrink: 0;
         }
 
         .user-info {
@@ -481,6 +650,32 @@ function isActivePage($page) {
             color: #374151;
         }
 
+        /* Color Schemes for Search Results */
+        .blue {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .green {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .yellow {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .red {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .purple {
+            background: #f3e8ff;
+            color: #9333ea;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .sidebar {
@@ -490,6 +685,16 @@ function isActivePage($page) {
 
             .main-content {
                 margin-left: 0;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .search-container {
+                order: -1;
+                max-width: none;
             }
         }
 
@@ -501,8 +706,9 @@ function isActivePage($page) {
             }
 
             .header-right {
+                flex-direction: column;
+                gap: 12px;
                 width: 100%;
-                justify-content: center;
             }
 
             .products-table {
@@ -527,7 +733,7 @@ function isActivePage($page) {
             border-radius: 8px;
             margin-bottom: 20px;
             font-weight: 500;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
@@ -644,6 +850,16 @@ function isActivePage($page) {
                     <h1>Lista de Produtos</h1>
                     <p class="header-subtitle">Gerencie e visualize todos os produtos do estoque</p>
                 </div>
+
+                <!-- Search Bar -->
+                <div class="search-container">
+                    <div class="search-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar produtos, fornecedores, usuários...">
+                        <div id="searchResults" class="search-results"></div>
+                    </div>
+                </div>
+
                 <div class="header-right">
                     <div class="user-info">
                         <div class="user-avatar">
@@ -775,7 +991,210 @@ function isActivePage($page) {
     </div>
 
     <script>
-        // Adiciona feedback visual no clique das linhas
+        // Search functionality
+        let searchTimeout;
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+
+            clearTimeout(searchTimeout);
+
+            if (query.length < 2) {
+                hideSearchResults();
+                return;
+            }
+
+            // Show loading
+            showLoading();
+
+            searchTimeout = setTimeout(() => {
+                performSearch(query);
+            }, 300);
+        });
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-container')) {
+                hideSearchResults();
+            }
+        });
+
+        // Handle keyboard navigation
+        searchInput.addEventListener('keydown', function(e) {
+            const items = searchResults.querySelectorAll('.search-result-item');
+            const activeItem = searchResults.querySelector('.search-result-item.active');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!activeItem) {
+                    items[0]?.classList.add('active');
+                } else {
+                    activeItem.classList.remove('active');
+                    const nextItem = activeItem.nextElementSibling;
+                    if (nextItem && nextItem.classList.contains('search-result-item')) {
+                        nextItem.classList.add('active');
+                    } else {
+                        items[0]?.classList.add('active');
+                    }
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!activeItem) {
+                    items[items.length - 1]?.classList.add('active');
+                } else {
+                    activeItem.classList.remove('active');
+                    const prevItem = activeItem.previousElementSibling;
+                    if (prevItem && prevItem.classList.contains('search-result-item')) {
+                        prevItem.classList.add('active');
+                    } else {
+                        items[items.length - 1]?.classList.add('active');
+                    }
+                }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const activeItem = searchResults.querySelector('.search-result-item.active');
+                if (activeItem) {
+                    activeItem.click();
+                }
+            } else if (e.key === 'Escape') {
+                hideSearchResults();
+                searchInput.blur();
+            }
+        });
+
+        function performSearch(query) {
+            fetch(`../class/class_search.php?q=${encodeURIComponent(query)}&from=read`)
+                .then(response => {
+                    // Verificar se a resposta está ok
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    // Verificar o content-type
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        // Se não for JSON, ler como texto para debug
+                        return response.text().then(text => {
+                            console.error('Resposta não é JSON:', text);
+                            throw new Error('Resposta inválida do servidor');
+                        });
+                    }
+
+                    return response.json();
+                })
+                .then(data => {
+                    hideLoading();
+
+                    // Verificar se há erro na resposta
+                    if (data.error) {
+                        showError(data.error);
+                        return;
+                    }
+
+                    displayResults(data.results || []);
+                })
+                .catch(error => {
+                    console.error('Erro na pesquisa:', error);
+                    hideLoading();
+                    showError('Erro ao realizar pesquisa: ' + error.message);
+                });
+        }
+
+        function displayResults(results) {
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="search-no-results">Nenhum resultado encontrado</div>';
+                showSearchResults();
+                return;
+            }
+
+            const html = results.map(result => {
+                const badgeHtml = result.badge ?
+                    `<span class="search-result-badge ${result.badgeClass || ''}">${result.badge}</span>` : '';
+
+                return `
+                    <div class="search-result-item" data-url="${result.url || '#'}" data-type="${result.type}">
+                        <div class="search-result-icon ${getIconClass(result.type)}">
+                            <i class="${result.icon}"></i>
+                        </div>
+                        <div class="search-result-content">
+                            <div class="search-result-title">
+                                ${result.title}
+                                ${badgeHtml}
+                            </div>
+                            ${result.subtitle ? `<div class="search-result-subtitle">${result.subtitle}</div>` : ''}
+                            ${result.description ? `<div class="search-result-description">${result.description}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            searchResults.innerHTML = html;
+
+            // Add click events
+            searchResults.querySelectorAll('.search-result-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const url = this.getAttribute('data-url');
+                    if (url && url !== '#') {
+                        window.location.href = url;
+                    }
+                });
+
+                // Add hover effect for keyboard navigation
+                item.addEventListener('mouseenter', function() {
+                    searchResults.querySelectorAll('.search-result-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            showSearchResults();
+        }
+
+        function getIconClass(type) {
+            const classes = {
+                'produto': 'blue',
+                'fornecedor': 'green',
+                'usuario': 'purple',
+                'secao': 'yellow'
+            };
+            return classes[type] || 'blue';
+        }
+
+        function showSearchResults() {
+            searchResults.classList.add('show');
+        }
+
+        function hideSearchResults() {
+            searchResults.classList.remove('show');
+            searchResults.querySelectorAll('.search-result-item').forEach(item => {
+                item.classList.remove('active');
+            });
+        }
+
+        function showLoading() {
+            searchResults.innerHTML = `
+                <div class="search-loading">
+                    <div class="spinner"></div>
+                    Pesquisando...
+                </div>
+            `;
+            showSearchResults();
+        }
+
+        function hideLoading() {
+            const loading = searchResults.querySelector('.search-loading');
+            if (loading) {
+                loading.remove();
+            }
+        }
+
+        function showError(message) {
+            searchResults.innerHTML = `<div class="search-no-results" style="color: #dc2626;">${message}</div>`;
+            showSearchResults();
+        }
+
+        // Adiciona feedback visual no clique das linhas da tabela
         document.querySelectorAll('.products-table tbody tr').forEach(row => {
             row.addEventListener('click', function() {
                 this.style.transform = 'scale(0.98)';
