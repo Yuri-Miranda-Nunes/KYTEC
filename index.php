@@ -5,12 +5,20 @@ session_start();
 require_once 'includes/functions.php';
 
 // Verifica se está logado
-verificarAutenticacao();
+if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    header("Location: login.php");
+    exit;
+}
 
-require_once 'conexao.php';
-$bd = new BancoDeDados();
-$usuario = getUsuarioLogado();
-
+// Função para verificar permissões
+function temPermissao($permissao) {
+    return in_array($permissao, $_SESSION['permissoes'] ?? []);
+}
+// Função para determinar se a página atual está ativa
+function isActivePage($page) {
+    $current = basename($_SERVER['PHP_SELF']);
+    return $current === $page ? 'active' : '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -640,7 +648,7 @@ $usuario = getUsuarioLogado();
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link">
+                        <a href="index.php" class="nav-link <?= isActivePage('index.php') ?>">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -652,14 +660,15 @@ $usuario = getUsuarioLogado();
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="read/read_product.php" class="nav-link">
+                            <a href="read/read_product.php" class="nav-link <?= isActivePage('read_product.php') ?>">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="create/create_product.php" class="nav-link">
+                                <a href="create/create_product.php"
+                                    class="nav-link <?= isActivePage('create_product.php') ?>">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -672,25 +681,39 @@ $usuario = getUsuarioLogado();
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="read/read_supplier.php" class="nav-link">
+                        <a href="read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
                     </div>
                 </div>
 
+                <!-- Logs -->
+                <?php if (temPermissao('listar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Logs</div>
+                        <div class="nav-item">
+                            <a href="log/product_input_and_output_log.php"
+                                class="nav-link <?= isActivePage('product_input_and_output_log.php') ?>">
+                                <i class="fas fa-history"></i>
+                                <span>Movimentações</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <!-- Usuários -->
                 <?php if (temPermissao('gerenciar_usuarios')): ?>
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="read/read_user.php" class="nav-link">
+                            <a href="read/read_user.php" class="nav-link <?= isActivePage('read_user.php') ?>">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="create/create_user.php" class="nav-link">
+                            <a href="create/create_user.php" class="nav-link <?= isActivePage('create_user.php') ?>">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -702,7 +725,7 @@ $usuario = getUsuarioLogado();
                 <div class="nav-section">
                     <div class="nav-section-title">Sistema</div>
                     <div class="nav-item">
-                        <a href="perfil.php" class="nav-link">
+                        <a href="perfil.php" class="nav-link <?= isActivePage('perfil.php') ?>">
                             <i class="fas fa-user-circle"></i>
                             <span>Meu Perfil</span>
                         </a>

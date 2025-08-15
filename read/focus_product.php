@@ -60,7 +60,11 @@ function getTipoBadgeClass($tipo)
             return 'type-outro';
     }
 }
-
+// Função para determinar se a página atual está ativa
+function isActivePage($page) {
+    $current = basename($_SERVER['PHP_SELF']);
+    return $current === $page ? 'active' : '';
+}
 // Função para obter classe do badge de estoque
 function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
 {
@@ -71,7 +75,33 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
     }
     return 'stock-normal';
 }
-?>
+
+if (!empty($_SESSION['mensagem_sucesso'])): ?>
+    <div class="alert alert-success" style="padding: 10px;
+background-color: #d4edda; /* Verde claro para sucesso */
+color: #155724; /* Verde escuro para texto */
+border-radius: 5px;
+margin-bottom: 15px;
+border: 1px solid #c3e6cb;
+font-weight: 600;">
+        <?= $_SESSION['mensagem_sucesso'];
+        unset($_SESSION['mensagem_sucesso']); ?>
+    </div>
+<?php endif; ?>
+
+<?php if (!empty($_SESSION['mensagem_erro'])): ?>
+    <div class="alert alert-danger" style="padding: 10px;
+background-color: #f8d7da; /* Vermelho claro */
+color: #721c24; /* Vermelho escuro */
+border-radius: 5px;
+margin-bottom: 15px;
+border: 1px solid #f5c6cb;
+font-weight: 600;">
+        <?= $_SESSION['mensagem_erro'];
+        unset($_SESSION['mensagem_erro']); ?>
+    </div>
+
+<?php endif; ?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -327,6 +357,118 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
             margin-top: 12px;
         }
 
+        /* Stock Actions */
+        .stock-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .stock-action-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stock-action-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .stock-action-card.entrada::before {
+            background: linear-gradient(90deg, #16a34a, #22c55e);
+        }
+
+        .stock-action-card.saida::before {
+            background: linear-gradient(90deg, #ef4444, #f87171);
+        }
+
+        .stock-action-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .stock-action-card:hover::before {
+            height: 6px;
+        }
+
+        .action-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .stock-action-card.entrada .action-icon {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: #16a34a;
+        }
+
+        .stock-action-card.saida .action-icon {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            color: #ef4444;
+        }
+
+        .stock-action-card:hover .action-icon {
+            transform: scale(1.1);
+        }
+
+        .action-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .stock-action-card.entrada .action-title {
+            color: #16a34a;
+        }
+
+        .stock-action-card.saida .action-title {
+            color: #ef4444;
+        }
+
+        .action-description {
+            color: #64748b;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .action-details {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .stock-action-card.entrada .action-details {
+            color: #16a34a;
+        }
+
+        .stock-action-card.saida .action-details {
+            color: #ef4444;
+        }
+
         /* Info Grid */
         .info-grid {
             display: grid;
@@ -553,6 +695,49 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
             border-top: 1px solid #e2e8f0;
         }
 
+        /* Stock Alert */
+        .stock-alert {
+            background: linear-gradient(135deg, #fef3c7, #fed7aa);
+            border: 1px solid #f59e0b;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .stock-alert.critical {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            border-color: #ef4444;
+        }
+
+        .stock-alert .alert-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .stock-alert .alert-content {
+            flex: 1;
+        }
+
+        .stock-alert .alert-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .stock-alert .alert-message {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .sidebar {
@@ -562,6 +747,10 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
 
             .main-content {
                 margin-left: 0;
+            }
+
+            .stock-actions {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -609,7 +798,7 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="../index.php" class="nav-link">
+                        <a href="../index.php" class="nav-link <?= isActivePage('index.php') ?>">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -621,14 +810,15 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="../read/read_product.php" class="nav-link active">
+                            <a href="../read/read_product.php" class="nav-link <?= isActivePage('read_product.php') ?>">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="../create/create_product.php" class="nav-link">
+                                <a href="../create/create_product.php"
+                                    class="nav-link <?= isActivePage('create_product.php') ?>">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -641,25 +831,39 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="../read/read_supplier.php" class="nav-link">
+                        <a href="../read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
                     </div>
                 </div>
 
+                <!-- Logs -->
+                <?php if (temPermissao('listar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Logs</div>
+                        <div class="nav-item">
+                            <a href="../log/product_input_and_output_log.php"
+                                class="nav-link <?= isActivePage('product_input_and_output_log.php') ?>">
+                                <i class="fas fa-history"></i>
+                                <span>Movimentações</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <!-- Usuários -->
                 <?php if (temPermissao('gerenciar_usuarios')): ?>
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="../read/read_user.php" class="nav-link">
+                            <a href="../read/read_user.php" class="nav-link <?= isActivePage('read_user.php') ?>">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="../create/create_user.php" class="nav-link">
+                            <a href="../create/create_user.php" class="nav-link <?= isActivePage('create_user.php') ?>">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -671,7 +875,7 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                 <div class="nav-section">
                     <div class="nav-section-title">Sistema</div>
                     <div class="nav-item">
-                        <a href="../perfil.php" class="nav-link">
+                        <a href="../perfil.php" class="nav-link <?= isActivePage('perfil.php') ?>">
                             <i class="fas fa-user-circle"></i>
                             <span>Meu Perfil</span>
                         </a>
@@ -685,14 +889,13 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                 </div>
             </nav>
         </aside>
-
         <!-- Main Content -->
         <main class="main-content">
             <!-- Header -->
             <div class="header">
                 <div class="header-left">
                     <h1>Detalhes do Produto</h1>
-                    <p class="header-subtitle">Visualize todas as informações do produto</p>
+                    <p class="header-subtitle">Visualize todas as informações e gerencie o estoque</p>
                 </div>
                 <div class="header-right">
                     <div class="user-info">
@@ -732,6 +935,79 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                 </div>
             </div>
 
+            <!-- Stock Alert -->
+            <?php
+            $showAlert = false;
+            $alertClass = '';
+            $alertTitle = '';
+            $alertMessage = '';
+            $alertIcon = '';
+
+            if ($produto['estoque_atual'] <= $produto['estoque_minimo']) {
+                $showAlert = true;
+                $alertClass = 'critical';
+                $alertTitle = 'Estoque Crítico!';
+                $alertMessage = 'O estoque atual (' . $produto['estoque_atual'] . ' unidades) está no nível mínimo ou abaixo. Reposição urgente necessária!';
+                $alertIcon = 'fas fa-exclamation-triangle';
+            } elseif ($produto['estoque_atual'] <= ($produto['estoque_minimo'] * 2)) {
+                $showAlert = true;
+                $alertClass = '';
+                $alertTitle = 'Atenção: Estoque Baixo';
+                $alertMessage = 'O estoque atual (' . $produto['estoque_atual'] . ' unidades) está se aproximando do limite mínimo. Considere fazer reposição.';
+                $alertIcon = 'fas fa-exclamation-circle';
+            }
+            ?>
+
+            <?php if ($showAlert): ?>
+                <div class="stock-alert <?= $alertClass ?>">
+                    <div class="alert-icon">
+                        <i class="<?= $alertIcon ?>"
+                            style="color: <?= $alertClass === 'critical' ? '#ef4444' : '#f59e0b' ?>;"></i>
+                    </div>
+                    <div class="alert-content">
+                        <div class="alert-title" style="color: <?= $alertClass === 'critical' ? '#dc2626' : '#d97706' ?>">
+                            <?= $alertTitle ?>
+                        </div>
+                        <div class="alert-message" style="color: <?= $alertClass === 'critical' ? '#991b1b' : '#92400e' ?>">
+                            <?= $alertMessage ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- Stock Management Actions -->
+            <div class="stock-actions">
+                <!-- Entrada de Estoque -->
+                <a href="entrada_estoque.php?id=<?= $produto['id_produto'] ?>" class="stock-action-card entrada">
+                    <div class="action-icon">
+                        <i class="fas fa-plus-circle"></i>
+                    </div>
+                    <div class="action-title">Entrada de Estoque</div>
+                    <div class="action-description">
+                        Registre a entrada de produtos no estoque, seja por compra, produção ou transferência.
+                    </div>
+                    <div class="action-details">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>Adicionar ao estoque</span>
+                    </div>
+                </a>
+
+                <!-- Saída de Estoque -->
+                <a href="saida_estoque.php?id=<?= $produto['id_produto'] ?>" class="stock-action-card saida">
+                    <div class="action-icon">
+                        <i class="fas fa-minus-circle"></i>
+                    </div>
+                    <div class="action-title">Saída de Estoque</div>
+                    <div class="action-description">
+                        Registre a retirada de produtos do estoque por venda, uso interno ou transferência.
+                    </div>
+                    <div class="action-details">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>Remover do estoque</span>
+                    </div>
+                </a>
+            </div>
+
             <!-- Information Grid -->
             <div class="info-grid">
                 <!-- Informações Básicas -->
@@ -761,8 +1037,6 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                             </span>
                         </span>
                     </div>
-
-                    
                 </div>
 
                 <!-- Informações Financeiras -->
@@ -798,7 +1072,8 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                     <div class="info-item">
                         <span class="info-label">Estoque Atual</span>
                         <span class="info-value">
-                            <span class="stock-badge <?= getEstoqueBadgeClass($produto['estoque_atual'], $produto['estoque_minimo']) ?>">
+                            <span
+                                class="stock-badge <?= getEstoqueBadgeClass($produto['estoque_atual'], $produto['estoque_minimo']) ?>">
                                 <?= $produto['estoque_atual'] ?> unidades
                             </span>
                         </span>
@@ -859,7 +1134,8 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                     <div class="info-item">
                         <span class="info-label">ID do Produto</span>
                         <span class="info-value">
-                            <span class="product-id">#<?= str_pad($produto['id_produto'], 4, '0', STR_PAD_LEFT) ?></span>
+                            <span
+                                class="product-id">#<?= str_pad($produto['id_produto'], 4, '0', STR_PAD_LEFT) ?></span>
                         </span>
                     </div>
                 </div>
@@ -891,13 +1167,15 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                         </a>
                     <?php endif; ?>
                     <?php if (temPermissao('excluir_produtos')): ?>
-                        <a href="../delete/delete_product.php?id=<?= $produto['id_produto'] ?>" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.')">
+                        <a href="../delete/delete_product.php?id=<?= $produto['id_produto'] ?>" class="btn btn-danger"
+                            onclick="return confirm('Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.')">
                             <i class="fas fa-trash"></i>
                             Excluir Produto
                         </a>
                     <?php endif; ?>
                 </div>
             </div>
+
         </main>
     </div>
 
@@ -909,7 +1187,7 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
 
         // Adicionar confirmação aos links de exclusão
         document.querySelectorAll('a[href*="delete_product"]').forEach(link => {
-            link.addEventListener('click', function(e) {
+            link.addEventListener('click', function (e) {
                 if (!confirmarExclusao()) {
                     e.preventDefault();
                 }
@@ -917,7 +1195,7 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
         });
 
         // Animação de entrada suave
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const cards = document.querySelectorAll('.info-card');
             cards.forEach((card, index) => {
                 card.style.opacity = '0';
@@ -928,6 +1206,30 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
                 }, index * 100);
+            });
+
+            // Animação para os cartões de ações de estoque
+            const actionCards = document.querySelectorAll('.stock-action-card');
+            actionCards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(30px)';
+
+                setTimeout(() => {
+                    card.style.transition = 'all 0.6s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, (index + 1) * 200);
+            });
+        });
+
+        // Efeito de hover adicional para os cartões de ação
+        document.querySelectorAll('.stock-action-card').forEach(card => {
+            card.addEventListener('mouseenter', function () {
+                this.style.transform = 'translateY(-8px) scale(1.02)';
+            });
+
+            card.addEventListener('mouseleave', function () {
+                this.style.transform = 'translateY(-4px) scale(1)';
             });
         });
     </script>
