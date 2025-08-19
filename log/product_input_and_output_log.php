@@ -7,15 +7,15 @@ if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION[
     exit;
 }
 
+if (!in_array('cadastrar_produtos', $_SESSION['permissoes'] ?? [])) {
+    echo "Acesso negado.";
+    exit;
+}
+
 // Função para verificar permissões
 function temPermissao($permissao)
 {
     return in_array($permissao, $_SESSION['permissoes'] ?? []);
-}
-
-if (!temPermissao('listar_produtos')) {
-    echo "Acesso negado.";
-    exit;
 }
 
 require_once '../conexao.php';
@@ -115,8 +115,7 @@ try {
 }
 
 // Função para determinar se a página atual está ativa
-function isActivePage($page)
-{
+function isActivePage($page) {
     $current = basename($_SERVER['PHP_SELF']);
     return $current === $page ? 'active' : '';
 }
