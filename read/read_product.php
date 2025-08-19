@@ -71,7 +71,8 @@ function urlOrdenar($coluna)
     return '?' . http_build_query($query);
 }
 // Função para determinar se a página atual está ativa
-function isActivePage($page) {
+function isActivePage($page)
+{
     $current = basename($_SERVER['PHP_SELF']);
     return $current === $page ? 'active' : '';
 }
@@ -780,18 +781,20 @@ function isActivePage($page) {
                 <?php endif; ?>
 
                 <!-- Fornecedores -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Fornecedores</div>
-                    <div class="nav-item">
-                        <a href="../read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
-                            <i class="fas fa-truck"></i>
-                            <span>Listar Fornecedores</span>
-                        </a>
+                <?php if (temPermissao('cadastrar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Fornecedores</div>
+                        <div class="nav-item">
+                            <a href="../read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
+                                <i class="fas fa-truck"></i>
+                                <span>Listar Fornecedores</span>
+                            </a>
+                        </div>
                     </div>
-                </div>
+                <?php endif; ?>
 
                 <!-- Logs -->
-                <?php if (temPermissao('listar_produtos')): ?>
+                <?php if (temPermissao('cadastrar_produtos')): ?>
                     <div class="nav-section">
                         <div class="nav-section-title">Logs</div>
                         <div class="nav-item">

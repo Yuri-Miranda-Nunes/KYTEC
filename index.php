@@ -14,41 +14,45 @@ verificarAutenticacao();
 require_once 'conexao.php';
 
 // Função para determinar se a página atual está ativa
-function isActivePage($page) {
+function isActivePage($page)
+{
     $current = basename($_SERVER['PHP_SELF']);
     return $current === $page ? 'active' : '';
 }
 
 // Classe para gerenciar dados do dashboard
-class DashboardData {
+class DashboardData
+{
     private $pdo;
-    
-    public function __construct($pdo) {
+
+    public function __construct($pdo)
+    {
         $this->pdo = $pdo;
     }
-    
+
     // Buscar estatísticas gerais
-    public function getEstasticasGerais() {
+    public function getEstasticasGerais()
+    {
         $stats = [];
-        
+
         try {
             // Total de produtos ativos
             $stmt = $this->pdo->query("SELECT COUNT(*) FROM produtos WHERE ativo = 1");
             $stats['total_produtos'] = $stmt->fetchColumn();
-            
+
             // Produtos com estoque baixo
             $stmt = $this->pdo->query("SELECT COUNT(*) FROM produtos WHERE estoque_atual <= estoque_minimo AND ativo = 1");
             $stats['estoque_baixo'] = $stmt->fetchColumn();
-            
+
             // Valor total do estoque
             $stmt = $this->pdo->query("SELECT SUM(estoque_atual * preco) as valor_total FROM produtos WHERE ativo = 1");
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             $stats['valor_total'] = $result['valor_total'] ?: 0;
-            
+
             // Total de fornecedores
             $stmt = $this->pdo->query("SELECT COUNT(*) FROM fornecedores WHERE ativo = 1");
             $stats['total_fornecedores'] = $stmt->fetchColumn();
-            
+
             // Total de usuários (se existir a tabela)
             try {
                 $stmt = $this->pdo->query("SELECT COUNT(*) FROM usuarios WHERE ativo = 1");
@@ -56,7 +60,6 @@ class DashboardData {
             } catch (PDOException $e) {
                 $stats['total_usuarios'] = 0;
             }
-            
         } catch (PDOException $e) {
             // Em caso de erro, retorna valores zerados
             $stats = [
@@ -67,12 +70,13 @@ class DashboardData {
                 'total_usuarios' => 0
             ];
         }
-        
+
         return $stats;
     }
-    
+
     // Buscar produtos com estoque baixo
-    public function getProdutosEstoqueBaixo($limit = 10) {
+    public function getProdutosEstoqueBaixo($limit = 10)
+    {
         try {
             $sql = "SELECT p.nome, p.estoque_atual, p.estoque_minimo, f.nome as fornecedor_nome 
                     FROM produtos p 
@@ -80,23 +84,24 @@ class DashboardData {
                     WHERE p.estoque_atual <= p.estoque_minimo AND p.ativo = 1 
                     ORDER BY p.estoque_atual ASC 
                     LIMIT :limit";
-            
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];
         }
     }
-    
+
     // Buscar atividades recentes (movimentações de estoque)
-    public function getAtividadesRecentes($limit = 10) {
+    public function getAtividadesRecentes($limit = 10)
+    {
         try {
             // Verifica se existe tabela de logs
             $tables = $this->pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-            
+
             if (in_array('movimentacoes_estoque', $tables)) {
                 $sql = "SELECT m.tipo, m.quantidade, m.data_movimentacao, m.observacao,
                                p.nome as produto_nome, u.nome as usuario_nome
@@ -117,41 +122,42 @@ class DashboardData {
                 // Se não há tabela de logs, cria dados simulados baseados nos produtos
                 return $this->getAtividadesSimuladas($limit);
             }
-            
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return $this->getAtividadesSimuladas($limit);
         }
     }
-    
+
     // Atividades simuladas quando não há logs
-    private function getAtividadesSimuladas($limit) {
+    private function getAtividadesSimuladas($limit)
+    {
         try {
             $sql = "SELECT nome, estoque_atual, DATE_SUB(NOW(), INTERVAL FLOOR(RAND() * 168) HOUR) as data_simulada
                     FROM produtos WHERE ativo = 1 ORDER BY RAND() LIMIT :limit";
-            
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $atividades = [];
-            
+
             $tipos = ['entrada', 'saida', 'ajuste'];
             $acoes = [
                 'entrada' => 'Entrada de estoque',
                 'saida' => 'Saída de estoque',
                 'ajuste' => 'Ajuste de estoque'
             ];
-            
+
             foreach ($produtos as $produto) {
                 $tipo = $tipos[array_rand($tipos)];
                 $quantidade = rand(1, 20);
-                
+
                 $atividades[] = [
                     'tipo' => $tipo,
                     'quantidade' => $quantidade,
@@ -161,30 +167,31 @@ class DashboardData {
                     'observacao' => $acoes[$tipo]
                 ];
             }
-            
+
             return $atividades;
         } catch (PDOException $e) {
             return [];
         }
     }
-    
+
     // Dados para gráfico de movimentações
-    public function getDadosGrafico($dias = 7) {
+    public function getDadosGrafico($dias = 7)
+    {
         try {
             $labels = [];
             $entradas = [];
             $saidas = [];
-            
+
             for ($i = $dias - 1; $i >= 0; $i--) {
                 $data = date('Y-m-d', strtotime("-$i days"));
                 $labels[] = date('d/m', strtotime($data));
-                
+
                 // Simula dados para o gráfico
                 // Em um sistema real, você buscaria das tabelas de movimentação
                 $entradas[] = rand(5, 25);
                 $saidas[] = rand(3, 20);
             }
-            
+
             return [
                 'labels' => $labels,
                 'entradas' => $entradas,
@@ -846,18 +853,20 @@ $dados_grafico = $dashboard->getDadosGrafico();
                 <?php endif; ?>
 
                 <!-- Fornecedores -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Fornecedores</div>
-                    <div class="nav-item">
-                        <a href="read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
-                            <i class="fas fa-truck"></i>
-                            <span>Listar Fornecedores</span>
-                        </a>
+                <?php if (temPermissao('cadastrar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Fornecedores</div>
+                        <div class="nav-item">
+                            <a href="read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
+                                <i class="fas fa-truck"></i>
+                                <span>Listar Fornecedores</span>
+                            </a>
+                        </div>
                     </div>
-                </div>
+                <?php endif; ?>
 
                 <!-- Logs -->
-                <?php if (temPermissao('listar_produtos')): ?>
+                <?php if (temPermissao('cadastrar_produtos')): ?>
                     <div class="nav-section">
                         <div class="nav-section-title">Logs</div>
                         <div class="nav-item">
@@ -921,8 +930,8 @@ $dados_grafico = $dashboard->getDadosGrafico();
                 <div class="search-container">
                     <div class="search-wrapper">
                         <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="searchInput" class="search-input" 
-                               placeholder="Pesquisar produtos, fornecedores, usuários...">
+                        <input type="text" id="searchInput" class="search-input"
+                            placeholder="Pesquisar produtos, fornecedores, usuários...">
                         <div id="searchResults" class="search-results"></div>
                     </div>
                 </div>
@@ -954,7 +963,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
                         <div>
                             <div class="alert-title">Produtos com Estoque Baixo</div>
                             <div class="alert-subtitle">
-                                <?= count($produtos_estoque_baixo) ?> produto<?= count($produtos_estoque_baixo) > 1 ? 's' : '' ?> 
+                                <?= count($produtos_estoque_baixo) ?> produto<?= count($produtos_estoque_baixo) > 1 ? 's' : '' ?>
                                 necessita<?= count($produtos_estoque_baixo) > 1 ? 'm' : '' ?> reposição
                             </div>
                         </div>
@@ -1105,10 +1114,10 @@ $dados_grafico = $dashboard->getDadosGrafico();
                                     'cadastro' => ['fas fa-plus', 'blue', '+'],
                                     'edicao' => ['fas fa-edit', 'yellow', '']
                                 ];
-                                
+
                                 $config = $icone_config[$tipo] ?? ['fas fa-history', 'blue', ''];
-                                $data_formatada = isset($atividade['data_movimentacao']) ? 
-                                    date('d/m H:i', strtotime($atividade['data_movimentacao'])) : 
+                                $data_formatada = isset($atividade['data_movimentacao']) ?
+                                    date('d/m H:i', strtotime($atividade['data_movimentacao'])) :
                                     'Agora';
                                 ?>
                                 <div class="activity-item">
@@ -1120,7 +1129,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
                                             <?= htmlspecialchars($atividade['observacao'] ?? ucfirst($tipo) . ' de estoque') ?>
                                         </div>
                                         <div class="activity-meta">
-                                            <?= htmlspecialchars($atividade['produto_nome'] ?? '') ?> • 
+                                            <?= htmlspecialchars($atividade['produto_nome'] ?? '') ?> •
                                             <?= $data_formatada ?>
                                             <?php if (isset($atividade['usuario_nome'])): ?>
                                                 • <?= htmlspecialchars($atividade['usuario_nome']) ?>
@@ -1389,7 +1398,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
-                
+
                 const dias = this.getAttribute('data-dias');
                 atualizarGrafico(dias);
             });
@@ -1406,7 +1415,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
                         stockChart.data.datasets[0].data = data.entradas;
                         stockChart.data.datasets[1].data = data.saidas;
                         stockChart.update();
-                        
+
                         // Atualizar título do gráfico
                         const titulo = document.querySelector('.chart-title');
                         const textos = {
