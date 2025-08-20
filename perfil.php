@@ -14,42 +14,50 @@ verificarAutenticacao();
 require_once 'conexao.php';
 
 // Função para determinar se a página atual está ativa
-function isActivePage($page) {
+function isActivePage($page)
+{
     $current = basename($_SERVER['PHP_SELF']);
     return $current === $page ? 'active' : '';
 }
 
 // Classe para gerenciar dados do perfil
-class PerfilUsuario {
+class PerfilUsuario
+{
     private $pdo;
-    
-    public function __construct($pdo) {
+
+    public function __construct($pdo)
+    {
         $this->pdo = $pdo;
     }
-    
+
     // Buscar dados completos do usuário
-    public function getDadosUsuario($userId) {
+    public function getDadosUsuario($userId)
+    {
         try {
             $sql = "SELECT u.*, 
-                           COUNT(l.id) as total_logins,
-                           DATEDIFF(NOW(), u.criado_em) as dias_no_sistema
-                    FROM usuarios u 
-                    LEFT JOIN logs l ON l.usuario_id = u.id AND l.acao = 'LOGIN'
-                    WHERE u.id = :user_id 
-                    GROUP BY u.id";
-            
+               COUNT(DISTINCT l.id) AS total_logins,
+               DATEDIFF(NOW(), u.criado_em) AS dias_no_sistema
+        FROM usuarios u 
+        LEFT JOIN logs l 
+            ON l.usuario_id = u.id 
+           AND l.acao = 'LOGIN'
+        WHERE u.id = :user_id 
+        GROUP BY u.id, u.criado_em";
+
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return false;
         }
     }
-    
+
     // Buscar atividades recentes do usuário
-    public function getAtividadesRecentes($userId, $limit = 10) {
+    public function getAtividadesRecentes($userId, $limit = 10)
+    {
         try {
             $sql = "SELECT l.*, p.nome as produto_nome 
                     FROM logs l
@@ -57,20 +65,21 @@ class PerfilUsuario {
                     WHERE l.usuario_id = :user_id 
                     ORDER BY l.criado_em DESC 
                     LIMIT :limit";
-            
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
             $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];
         }
     }
-    
+
     // Atualizar informações pessoais
-    public function atualizarInformacoesPessoais($userId, $dados) {
+    public function atualizarInformacoesPessoais($userId, $dados)
+    {
         try {
             $sql = "UPDATE usuarios SET 
                         nome = :nome,
@@ -81,7 +90,7 @@ class PerfilUsuario {
                         data_admissao = :data_admissao,
                         atualizado_em = NOW()
                     WHERE id = :user_id";
-            
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':nome', $dados['nome']);
             $stmt->bindParam(':matricula', $dados['matricula']);
@@ -90,64 +99,79 @@ class PerfilUsuario {
             $stmt->bindParam(':cargo', $dados['cargo']);
             $stmt->bindParam(':data_admissao', $dados['data_admissao']);
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
-            
+
             $success = $stmt->execute();
-            
+
             if ($success) {
                 // Atualizar dados na sessão
                 $_SESSION['usuario_nome'] = $dados['nome'];
-                
+
                 // Log da ação
-                $this->registrarLog($userId, 'UPDATE', 'usuarios', $userId, 
-                                  null, json_encode($dados), 'Atualização de perfil pessoal');
+                $this->registrarLog(
+                    $userId,
+                    'UPDATE',
+                    'usuarios',
+                    $userId,
+                    null,
+                    json_encode($dados),
+                    'Atualização de perfil pessoal'
+                );
             }
-            
+
             return $success;
         } catch (PDOException $e) {
             return false;
         }
     }
-    
+
     // Alterar senha
-    public function alterarSenha($userId, $senhaAtual, $novaSenha) {
+    public function alterarSenha($userId, $senhaAtual, $novaSenha)
+    {
         try {
             // Verificar senha atual
             $sql = "SELECT senha FROM usuarios WHERE id = :user_id";
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             if (!password_verify($senhaAtual, $usuario['senha'])) {
                 return ['success' => false, 'message' => 'Senha atual incorreta'];
             }
-            
+
             // Atualizar senha
             $novaSenhaCriptografada = password_hash($novaSenha, PASSWORD_DEFAULT);
-            
+
             $sql = "UPDATE usuarios SET senha = :nova_senha, atualizado_em = NOW() WHERE id = :user_id";
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':nova_senha', $novaSenhaCriptografada);
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
-            
+
             $success = $stmt->execute();
-            
+
             if ($success) {
                 // Log da alteração de senha
-                $this->registrarLog($userId, 'UPDATE', 'usuarios', $userId, 
-                                  null, null, 'Alteração de senha');
+                $this->registrarLog(
+                    $userId,
+                    'UPDATE',
+                    'usuarios',
+                    $userId,
+                    null,
+                    null,
+                    'Alteração de senha'
+                );
             }
-            
+
             return ['success' => $success, 'message' => $success ? 'Senha alterada com sucesso' : 'Erro ao alterar senha'];
-            
         } catch (PDOException $e) {
             return ['success' => false, 'message' => 'Erro interno do servidor'];
         }
     }
-    
+
     // Buscar sessões ativas (simulado - em um sistema real, isso seria armazenado em uma tabela de sessões)
-    public function getSessoesAtivas($userId) {
+    public function getSessoesAtivas($userId)
+    {
         try {
             // Buscar últimos logins para simular sessões ativas
             $sql = "SELECT ip, user_agent, criado_em 
@@ -155,23 +179,24 @@ class PerfilUsuario {
                     WHERE usuario_id = :user_id AND acao = 'LOGIN' 
                     ORDER BY criado_em DESC 
                     LIMIT 5";
-            
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             return [];
         }
     }
-    
+
     // Registrar log de ação
-    private function registrarLog($userId, $acao, $tabela, $registroId, $dadosAnteriores, $dadosNovos, $descricao) {
+    private function registrarLog($userId, $acao, $tabela, $registroId, $dadosAnteriores, $dadosNovos, $descricao)
+    {
         try {
             $sql = "INSERT INTO logs (usuario_id, acao, tabela, registro_id, dados_anteriores, dados_novos, descricao, ip, user_agent) 
                     VALUES (:usuario_id, :acao, :tabela, :registro_id, :dados_anteriores, :dados_novos, :descricao, :ip, :user_agent)";
-            
+
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':usuario_id', $userId);
             $stmt->bindParam(':acao', $acao);
@@ -182,7 +207,7 @@ class PerfilUsuario {
             $stmt->bindParam(':descricao', $descricao);
             $stmt->bindParam(':ip', $_SERVER['REMOTE_ADDR']);
             $stmt->bindParam(':user_agent', $_SERVER['HTTP_USER_AGENT']);
-            
+
             return $stmt->execute();
         } catch (PDOException $e) {
             return false;
@@ -193,11 +218,11 @@ class PerfilUsuario {
 // Processar requisições AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
-    
+
     $bd = new BancoDeDados();
     $perfil = new PerfilUsuario($bd->pdo);
     $userId = $_SESSION['usuario_id'];
-    
+
     switch ($_POST['action']) {
         case 'update_personal':
             $dados = [
@@ -208,40 +233,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'cargo' => $_POST['cargo'] ?? '',
                 'data_admissao' => $_POST['data_admissao'] ?? ''
             ];
-            
+
             $success = $perfil->atualizarInformacoesPessoais($userId, $dados);
-            
+
             echo json_encode([
                 'success' => $success,
                 'message' => $success ? 'Informações atualizadas com sucesso!' : 'Erro ao atualizar informações'
             ]);
             break;
-            
+
         case 'change_password':
             $senhaAtual = $_POST['current_password'] ?? '';
             $novaSenha = $_POST['new_password'] ?? '';
             $confirmarSenha = $_POST['confirm_password'] ?? '';
-            
+
             if ($novaSenha !== $confirmarSenha) {
                 echo json_encode(['success' => false, 'message' => 'As senhas não coincidem']);
                 break;
             }
-            
+
             if (strlen($novaSenha) < 8) {
                 echo json_encode(['success' => false, 'message' => 'A senha deve ter pelo menos 8 caracteres']);
                 break;
             }
-            
+
             $result = $perfil->alterarSenha($userId, $senhaAtual, $novaSenha);
             echo json_encode($result);
             break;
-            
+
         case 'get_activities':
             $limit = (int)($_POST['limit'] ?? 10);
             $atividades = $perfil->getAtividadesRecentes($userId, $limit);
             echo json_encode(['success' => true, 'activities' => $atividades]);
             break;
-            
+
         default:
             echo json_encode(['success' => false, 'message' => 'Ação não reconhecida']);
     }
@@ -282,6 +307,7 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -827,8 +853,13 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Modal Styles */
@@ -974,21 +1005,38 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
             border-radius: 50%;
         }
 
-        input:checked + .slider {
+        input:checked+.slider {
             background-color: #3b82f6;
         }
 
-        input:checked + .slider:before {
+        input:checked+.slider:before {
             transform: translateX(26px);
         }
 
         /* Avatar Colors */
-        .avatar-color-1 { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
-        .avatar-color-2 { background: linear-gradient(135deg, #10b981, #059669); }
-        .avatar-color-3 { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .avatar-color-4 { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        .avatar-color-5 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-        .avatar-color-6 { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+        .avatar-color-1 {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        }
+
+        .avatar-color-2 {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .avatar-color-3 {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .avatar-color-4 {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .avatar-color-5 {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        .avatar-color-6 {
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+        }
 
         /* Responsive */
         @media (max-width: 1024px) {
@@ -1040,6 +1088,7 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
         }
     </style>
 </head>
+
 <body>
     <div class="dashboard">
         <!-- Sidebar -->
@@ -1174,10 +1223,10 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
                             <i class="fas fa-camera"></i>
                         </div>
                     </div>
-                    
+
                     <div class="profile-name" id="profileName"><?= htmlspecialchars($dadosUsuario['nome']) ?></div>
                     <div class="profile-role" id="profileRole"><?= htmlspecialchars($perfilExibicao) ?></div>
-                    
+
                     <div class="profile-stats">
                         <div class="stat-item">
                             <div class="stat-value" id="loginCount"><?= $dadosUsuario['total_logins'] ?: rand(10, 100) ?></div>
@@ -1214,21 +1263,21 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label class="form-label" for="nome">Nome Completo</label>
-                                        <input type="text" id="nome" name="nome" class="form-input" 
-                                               value="<?= htmlspecialchars($dadosUsuario['nome']) ?>" required>
+                                        <input type="text" id="nome" name="nome" class="form-input"
+                                            value="<?= htmlspecialchars($dadosUsuario['nome']) ?>" required>
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label" for="matricula">Matrícula</label>
-                                        <input type="text" id="matricula" name="matricula" class="form-input" 
-                                               value="<?= htmlspecialchars($dadosUsuario['email']) ?>" required>
+                                        <input type="text" id="matricula" name="matricula" class="form-input"
+                                            value="<?= htmlspecialchars($dadosUsuario['email']) ?>" required>
                                     </div>
                                 </div>
 
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label class="form-label" for="telefone">Telefone</label>
-                                        <input type="tel" id="telefone" name="telefone" class="form-input" 
-                                               value="<?= htmlspecialchars($dadosUsuario['telefone'] ?? '') ?>" placeholder="(11) 99999-9999">
+                                        <input type="tel" id="telefone" name="telefone" class="form-input"
+                                            value="<?= htmlspecialchars($dadosUsuario['telefone'] ?? '') ?>" placeholder="(11) 99999-9999">
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label" for="departamento">Departamento</label>
@@ -1246,20 +1295,20 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label class="form-label" for="cargo">Cargo</label>
-                                        <input type="text" id="cargo" name="cargo" class="form-input" 
-                                               value="<?= htmlspecialchars($dadosUsuario['cargo'] ?? '') ?>" placeholder="Seu cargo na empresa">
+                                        <input type="text" id="cargo" name="cargo" class="form-input"
+                                            value="<?= htmlspecialchars($dadosUsuario['cargo'] ?? '') ?>" placeholder="Seu cargo na empresa">
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label" for="perfil">Perfil de Acesso</label>
-                                        <input type="text" id="perfil" name="perfil" class="form-input" 
-                                               value="<?= htmlspecialchars($perfilExibicao) ?>" disabled>
+                                        <input type="text" id="perfil" name="perfil" class="form-input"
+                                            value="<?= htmlspecialchars($perfilExibicao) ?>" disabled>
                                     </div>
                                 </div>
 
                                 <div class="form-group">
                                     <label class="form-label" for="data_admissao">Data de Admissão</label>
-                                    <input type="date" id="data_admissao" name="data_admissao" class="form-input" 
-                                           value="<?= $dadosUsuario['data_admissao'] ?? date('Y-m-d') ?>">
+                                    <input type="date" id="data_admissao" name="data_admissao" class="form-input"
+                                        value="<?= $dadosUsuario['data_admissao'] ?? date('Y-m-d') ?>">
                                 </div>
 
                                 <div class="form-group" style="margin-top: 32px;">
@@ -1332,7 +1381,7 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
                                                 <?= date('d/m H:i', strtotime($atividade['criado_em'])) ?>
                                             </div>
                                             <div class="activity-description">
-                                                <strong><?= ucfirst($atividade['acao']) ?>:</strong> 
+                                                <strong><?= ucfirst($atividade['acao']) ?>:</strong>
                                                 <?= htmlspecialchars($atividade['descricao'] ?? $atividade['detalhes'] ?? 'Atividade do sistema') ?>
                                                 <?php if ($atividade['produto_nome']): ?>
                                                     - <?= htmlspecialchars($atividade['produto_nome']) ?>
@@ -1348,14 +1397,14 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
                                             <strong>Login realizado:</strong> Acesso ao sistema via navegador
                                         </div>
                                     </div>
-                                    
+
                                     <div class="activity-item">
                                         <div class="activity-time">Ontem, 16:45</div>
                                         <div class="activity-description">
                                             <strong>Visualização:</strong> Dashboard acessado
                                         </div>
                                     </div>
-                                    
+
                                     <div class="activity-item">
                                         <div class="activity-time">15 Ago, 09:35</div>
                                         <div class="activity-description">
@@ -1364,7 +1413,7 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
                                     </div>
                                 <?php endif; ?>
                             </div>
-                            
+
                             <div style="text-align: center; margin-top: 32px;">
                                 <button class="btn btn-secondary" onclick="loadMoreActivity()">
                                     <i class="fas fa-spinner"></i>
@@ -1393,8 +1442,8 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="new_password">Nova Senha</label>
-                        <input type="password" id="new_password" name="new_password" class="form-input" 
-                               minlength="8" required>
+                        <input type="password" id="new_password" name="new_password" class="form-input"
+                            minlength="8" required>
                         <small style="color: #64748b; font-size: 0.75rem;">
                             Mínimo de 8 caracteres, incluindo letras maiúsculas, minúsculas e números
                         </small>
@@ -1436,7 +1485,8 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
                     </div>
                 </div>
                 <?php foreach ($sessoesAtivas as $index => $sessao): ?>
-                    <?php if ($index > 0): // Pular a primeira que é a atual ?>
+                    <?php if ($index > 0): // Pular a primeira que é a atual 
+                    ?>
                         <div class="session-item">
                             <div class="session-info">
                                 <div class="session-device">
@@ -1470,11 +1520,11 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
         document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', function() {
                 const tabId = this.getAttribute('data-tab');
-                
+
                 // Remove active class from all tabs and buttons
                 document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
                 document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-                
+
                 // Add active class to clicked button and corresponding pane
                 this.classList.add('active');
                 document.getElementById(tabId).classList.add('active');
@@ -1487,14 +1537,14 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
 
         function changeAvatarColor() {
             const avatar = document.getElementById('userAvatar');
-            
+
             // Remove current color class
             avatarColors.forEach(color => avatar.classList.remove(color));
-            
+
             // Add next color
             currentColorIndex = (currentColorIndex + 1) % avatarColors.length;
             avatar.classList.add(avatarColors[currentColorIndex]);
-            
+
             // Show notification
             showNotification('Cor do avatar alterada com sucesso!', 'success');
         }
@@ -1502,39 +1552,39 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
         // Personal info form
         function updatePersonalInfo(event) {
             event.preventDefault();
-            
+
             const btn = document.getElementById('savePersonalBtn');
             const originalText = btn.innerHTML;
-            
+
             btn.innerHTML = '<div class="loading"><div class="spinner"></div>Salvando...</div>';
             btn.disabled = true;
-            
+
             const formData = new FormData(document.getElementById('personalForm'));
             formData.append('action', 'update_personal');
-            
+
             fetch('perfil.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                
-                if (data.success) {
-                    showNotification(data.message, 'success');
-                    // Update profile name in sidebar
-                    const nome = document.getElementById('nome').value;
-                    document.getElementById('profileName').textContent = nome.split(' ')[0];
-                } else {
-                    showNotification(data.message, 'error');
-                }
-            })
-            .catch(error => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                showNotification('Erro ao salvar: ' + error.message, 'error');
-            });
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        // Update profile name in sidebar
+                        const nome = document.getElementById('nome').value;
+                        document.getElementById('profileName').textContent = nome.split(' ')[0];
+                    } else {
+                        showNotification(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    showNotification('Erro ao salvar: ' + error.message, 'error');
+                });
         }
 
         function resetPersonalForm() {
@@ -1554,26 +1604,26 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
 
         function changePassword(event) {
             event.preventDefault();
-            
+
             const formData = new FormData(document.getElementById('passwordForm'));
             formData.append('action', 'change_password');
-            
+
             fetch('perfil.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    closePasswordModal();
-                    showNotification(data.message, 'success');
-                } else {
-                    showNotification(data.message, 'error');
-                }
-            })
-            .catch(error => {
-                showNotification('Erro ao alterar senha: ' + error.message, 'error');
-            });
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        closePasswordModal();
+                        showNotification(data.message, 'success');
+                    } else {
+                        showNotification(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Erro ao alterar senha: ' + error.message, 'error');
+                });
         }
 
         // Active sessions modal
@@ -1617,53 +1667,53 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
         function loadMoreActivity() {
             const btn = event.target;
             const originalText = btn.innerHTML;
-            
+
             btn.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
             btn.disabled = true;
-            
+
             const formData = new FormData();
             formData.append('action', 'get_activities');
             formData.append('limit', 20);
-            
+
             fetch('perfil.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                
-                if (data.success && data.activities.length > 0) {
-                    // Aqui você adicionaria as novas atividades à timeline
-                    showNotification('Mais atividades carregadas!', 'info');
-                } else {
-                    showNotification('Não há mais atividades para carregar', 'info');
-                }
-            })
-            .catch(error => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                showNotification('Erro ao carregar atividades: ' + error.message, 'error');
-            });
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+
+                    if (data.success && data.activities.length > 0) {
+                        // Aqui você adicionaria as novas atividades à timeline
+                        showNotification('Mais atividades carregadas!', 'info');
+                    } else {
+                        showNotification('Não há mais atividades para carregar', 'info');
+                    }
+                })
+                .catch(error => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    showNotification('Erro ao carregar atividades: ' + error.message, 'error');
+                });
         }
 
         // Notification system
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
-            
-            const icon = type === 'success' ? 'fa-check-circle' : 
-                        type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
-            
+
+            const icon = type === 'success' ? 'fa-check-circle' :
+                type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+
             notification.innerHTML = `
                 <i class="fas ${icon}"></i>
                 <span>${message}</span>
                 <i class="fas fa-times notification-close" onclick="this.parentElement.remove()"></i>
             `;
-            
+
             document.getElementById('notifications').appendChild(notification);
-            
+
             // Auto remove after 5 seconds
             setTimeout(() => {
                 if (notification.parentElement) {
@@ -1683,4 +1733,5 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
         });
     </script>
 </body>
+
 </html>
