@@ -1,3 +1,285 @@
+<?php
+session_start();
+
+// Inclui funções comuns
+require_once 'includes/functions.php';
+
+// Verifica se está logado
+if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+    header("Location: login.php");
+    exit;
+}
+
+verificarAutenticacao();
+require_once 'conexao.php';
+
+// Função para determinar se a página atual está ativa
+function isActivePage($page) {
+    $current = basename($_SERVER['PHP_SELF']);
+    return $current === $page ? 'active' : '';
+}
+
+// Classe para gerenciar dados do perfil
+class PerfilUsuario {
+    private $pdo;
+    
+    public function __construct($pdo) {
+        $this->pdo = $pdo;
+    }
+    
+    // Buscar dados completos do usuário
+    public function getDadosUsuario($userId) {
+        try {
+            $sql = "SELECT u.*, 
+                           COUNT(l.id) as total_logins,
+                           DATEDIFF(NOW(), u.criado_em) as dias_no_sistema
+                    FROM usuarios u 
+                    LEFT JOIN logs l ON l.usuario_id = u.id AND l.acao = 'LOGIN'
+                    WHERE u.id = :user_id 
+                    GROUP BY u.id";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+    
+    // Buscar atividades recentes do usuário
+    public function getAtividadesRecentes($userId, $limit = 10) {
+        try {
+            $sql = "SELECT l.*, p.nome as produto_nome 
+                    FROM logs l
+                    LEFT JOIN produtos p ON l.registro_id = p.id_produto AND l.tabela = 'produtos'
+                    WHERE l.usuario_id = :user_id 
+                    ORDER BY l.criado_em DESC 
+                    LIMIT :limit";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+    
+    // Atualizar informações pessoais
+    public function atualizarInformacoesPessoais($userId, $dados) {
+        try {
+            $sql = "UPDATE usuarios SET 
+                        nome = :nome,
+                        email = :matricula,
+                        telefone = :telefone,
+                        departamento = :departamento,
+                        cargo = :cargo,
+                        data_admissao = :data_admissao,
+                        atualizado_em = NOW()
+                    WHERE id = :user_id";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':nome', $dados['nome']);
+            $stmt->bindParam(':matricula', $dados['matricula']);
+            $stmt->bindParam(':telefone', $dados['telefone']);
+            $stmt->bindParam(':departamento', $dados['departamento']);
+            $stmt->bindParam(':cargo', $dados['cargo']);
+            $stmt->bindParam(':data_admissao', $dados['data_admissao']);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            
+            $success = $stmt->execute();
+            
+            if ($success) {
+                // Atualizar dados na sessão
+                $_SESSION['usuario_nome'] = $dados['nome'];
+                
+                // Log da ação
+                $this->registrarLog($userId, 'UPDATE', 'usuarios', $userId, 
+                                  null, json_encode($dados), 'Atualização de perfil pessoal');
+            }
+            
+            return $success;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+    
+    // Alterar senha
+    public function alterarSenha($userId, $senhaAtual, $novaSenha) {
+        try {
+            // Verificar senha atual
+            $sql = "SELECT senha FROM usuarios WHERE id = :user_id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!password_verify($senhaAtual, $usuario['senha'])) {
+                return ['success' => false, 'message' => 'Senha atual incorreta'];
+            }
+            
+            // Atualizar senha
+            $novaSenhaCriptografada = password_hash($novaSenha, PASSWORD_DEFAULT);
+            
+            $sql = "UPDATE usuarios SET senha = :nova_senha, atualizado_em = NOW() WHERE id = :user_id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':nova_senha', $novaSenhaCriptografada);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            
+            $success = $stmt->execute();
+            
+            if ($success) {
+                // Log da alteração de senha
+                $this->registrarLog($userId, 'UPDATE', 'usuarios', $userId, 
+                                  null, null, 'Alteração de senha');
+            }
+            
+            return ['success' => $success, 'message' => $success ? 'Senha alterada com sucesso' : 'Erro ao alterar senha'];
+            
+        } catch (PDOException $e) {
+            return ['success' => false, 'message' => 'Erro interno do servidor'];
+        }
+    }
+    
+    // Buscar sessões ativas (simulado - em um sistema real, isso seria armazenado em uma tabela de sessões)
+    public function getSessoesAtivas($userId) {
+        try {
+            // Buscar últimos logins para simular sessões ativas
+            $sql = "SELECT ip, user_agent, criado_em 
+                    FROM logs 
+                    WHERE usuario_id = :user_id AND acao = 'LOGIN' 
+                    ORDER BY criado_em DESC 
+                    LIMIT 5";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+    
+    // Registrar log de ação
+    private function registrarLog($userId, $acao, $tabela, $registroId, $dadosAnteriores, $dadosNovos, $descricao) {
+        try {
+            $sql = "INSERT INTO logs (usuario_id, acao, tabela, registro_id, dados_anteriores, dados_novos, descricao, ip, user_agent) 
+                    VALUES (:usuario_id, :acao, :tabela, :registro_id, :dados_anteriores, :dados_novos, :descricao, :ip, :user_agent)";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':usuario_id', $userId);
+            $stmt->bindParam(':acao', $acao);
+            $stmt->bindParam(':tabela', $tabela);
+            $stmt->bindParam(':registro_id', $registroId);
+            $stmt->bindParam(':dados_anteriores', $dadosAnteriores);
+            $stmt->bindParam(':dados_novos', $dadosNovos);
+            $stmt->bindParam(':descricao', $descricao);
+            $stmt->bindParam(':ip', $_SERVER['REMOTE_ADDR']);
+            $stmt->bindParam(':user_agent', $_SERVER['HTTP_USER_AGENT']);
+            
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+}
+
+// Processar requisições AJAX
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    header('Content-Type: application/json');
+    
+    $bd = new BancoDeDados();
+    $perfil = new PerfilUsuario($bd->pdo);
+    $userId = $_SESSION['usuario_id'];
+    
+    switch ($_POST['action']) {
+        case 'update_personal':
+            $dados = [
+                'nome' => $_POST['nome'] ?? '',
+                'matricula' => $_POST['matricula'] ?? '',
+                'telefone' => $_POST['telefone'] ?? '',
+                'departamento' => $_POST['departamento'] ?? '',
+                'cargo' => $_POST['cargo'] ?? '',
+                'data_admissao' => $_POST['data_admissao'] ?? ''
+            ];
+            
+            $success = $perfil->atualizarInformacoesPessoais($userId, $dados);
+            
+            echo json_encode([
+                'success' => $success,
+                'message' => $success ? 'Informações atualizadas com sucesso!' : 'Erro ao atualizar informações'
+            ]);
+            break;
+            
+        case 'change_password':
+            $senhaAtual = $_POST['current_password'] ?? '';
+            $novaSenha = $_POST['new_password'] ?? '';
+            $confirmarSenha = $_POST['confirm_password'] ?? '';
+            
+            if ($novaSenha !== $confirmarSenha) {
+                echo json_encode(['success' => false, 'message' => 'As senhas não coincidem']);
+                break;
+            }
+            
+            if (strlen($novaSenha) < 8) {
+                echo json_encode(['success' => false, 'message' => 'A senha deve ter pelo menos 8 caracteres']);
+                break;
+            }
+            
+            $result = $perfil->alterarSenha($userId, $senhaAtual, $novaSenha);
+            echo json_encode($result);
+            break;
+            
+        case 'get_activities':
+            $limit = (int)($_POST['limit'] ?? 10);
+            $atividades = $perfil->getAtividadesRecentes($userId, $limit);
+            echo json_encode(['success' => true, 'activities' => $atividades]);
+            break;
+            
+        default:
+            echo json_encode(['success' => false, 'message' => 'Ação não reconhecida']);
+    }
+    exit;
+}
+
+// Buscar dados do usuário para exibição
+$bd = new BancoDeDados();
+$perfil = new PerfilUsuario($bd->pdo);
+$usuario = getUsuarioLogado();
+$dadosUsuario = $perfil->getDadosUsuario($_SESSION['usuario_id']);
+$atividadesRecentes = $perfil->getAtividadesRecentes($_SESSION['usuario_id']);
+$sessoesAtivas = $perfil->getSessoesAtivas($_SESSION['usuario_id']);
+
+// Se não encontrou dados do usuário, usar dados da sessão
+if (!$dadosUsuario) {
+    $dadosUsuario = [
+        'nome' => $_SESSION['usuario_nome'],
+        'email' => $_SESSION['usuario_email'] ?? 'usuario@empresa.com',
+        'perfil' => $_SESSION['usuario_perfil'],
+        'telefone' => '',
+        'departamento' => '',
+        'cargo' => '',
+        'data_admissao' => date('Y-m-d'),
+        'total_logins' => 0,
+        'dias_no_sistema' => 0
+    ];
+}
+
+// Traduzir perfil para exibição
+$perfis_traducao = [
+    'admin' => 'Administrador',
+    'estoquista' => 'Estoquista',
+    'visualizador' => 'Visualizador'
+];
+
+$perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsuario['perfil']);
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -549,492 +831,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .profile-container {
-                grid-template-columns: 1fr;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .tabs-header {
-                flex-wrap: wrap;
-            }
-
-            .tab-button {
-                flex: none;
-                min-width: 120px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                padding: 16px;
-            }
-
-            .profile-card {
-                padding: 24px;
-            }
-
-            .user-avatar {
-                width: 80px;
-                height: 80px;
-                font-size: 2rem;
-            }
-
-            .tab-content {
-                padding: 20px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="dashboard">
-        <!-- Sidebar (mantendo a estrutura original) -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2><i class="fas fa-boxes"></i> KYTEC</h2>
-            </div>
-
-            <nav class="sidebar-nav">
-                <!-- Dashboard -->
-                <div class="nav-section">
-                    <div class="nav-item">
-                        <a href="index.php" class="nav-link">
-                            <i class="fas fa-chart-line"></i>
-                            <span>Dashboard</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Produtos -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Produtos</div>
-                    <div class="nav-item">
-                        <a href="read/read_product.php" class="nav-link">
-                            <i class="fas fa-list"></i>
-                            <span>Listar Produtos</span>
-                        </a>
-                    </div>
-                    <div class="nav-item">
-                        <a href="create/create_product.php" class="nav-link">
-                            <i class="fas fa-plus"></i>
-                            <span>Cadastrar Produto</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Fornecedores -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Fornecedores</div>
-                    <div class="nav-item">
-                        <a href="read/read_supplier.php" class="nav-link">
-                            <i class="fas fa-truck"></i>
-                            <span>Listar Fornecedores</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Logs -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Logs</div>
-                    <div class="nav-item">
-                        <a href="log/product_input_and_output_log.php" class="nav-link">
-                            <i class="fas fa-history"></i>
-                            <span>Movimentações</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Usuários -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Usuários</div>
-                    <div class="nav-item">
-                        <a href="read/read_user.php" class="nav-link">
-                            <i class="fas fa-users"></i>
-                            <span>Listar Usuários</span>
-                        </a>
-                    </div>
-                    <div class="nav-item">
-                        <a href="create/create_user.php" class="nav-link">
-                            <i class="fas fa-user-plus"></i>
-                            <span>Cadastrar Usuário</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Sistema -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Sistema</div>
-                    <div class="nav-item">
-                        <a href="perfil.php" class="nav-link active">
-                            <i class="fas fa-user-circle"></i>
-                            <span>Meu Perfil</span>
-                        </a>
-                    </div>
-                    <div class="nav-item">
-                        <a href="logout.php" class="nav-link">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Sair</span>
-                        </a>
-                    </div>
-                </div>
-            </nav>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Header -->
-            <div class="header">
-                <div class="header-left">
-                    <div class="breadcrumb">
-                        <a href="index.php">Dashboard</a>
-                        <i class="fas fa-chevron-right"></i>
-                        <span>Meu Perfil</span>
-                    </div>
-                    <h1>Meu Perfil</h1>
-                    <p class="header-subtitle">Gerencie suas informações pessoais e configurações de conta</p>
-                </div>
-            </div>
-
-            <!-- Notifications Area -->
-            <div id="notifications"></div>
-
-            <!-- Profile Container -->
-            <div class="profile-container">
-                <!-- Profile Card -->
-                <div class="profile-card">
-                    <div class="avatar-section">
-                        <div class="user-avatar" id="userAvatar">
-                            P
-                        </div>
-                        <div class="avatar-edit" onclick="changeAvatarColor()">
-                            <i class="fas fa-camera"></i>
-                        </div>
-                    </div>
-                    
-                    <div class="profile-name" id="profileName">Prego</div>
-                    <div class="profile-role" id="profileRole">Administrador</div>
-                    
-                    <div class="profile-stats">
-                        <div class="stat-item">
-                            <div class="stat-value" id="loginCount">47</div>
-                            <div class="stat-label">Total Logins</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value" id="daysSinceJoined">180</div>
-                            <div class="stat-label">Dias no Sistema</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tabs Container -->
-                <div class="tabs-container">
-                    <div class="tabs-header">
-                        <button class="tab-button active" data-tab="personal">
-                            <i class="fas fa-user"></i>
-                            Informações Pessoais
-                        </button>
-                        <button class="tab-button" data-tab="security">
-                            <i class="fas fa-shield-alt"></i>
-                            Segurança
-                        </button>
-                        <button class="tab-button" data-tab="activity">
-                            <i class="fas fa-history"></i>
-                            Atividade
-                        </button>
-                    </div>
-
-                    <div class="tab-content">
-                        <!-- Personal Info Tab -->
-                        <div class="tab-pane active" id="personal">
-                            <form id="personalForm" onsubmit="updatePersonalInfo(event)">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label class="form-label" for="nome">Nome Completo</label>
-                                        <input type="text" id="nome" name="nome" class="form-input" 
-                                               value="Prego Silva Santos" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="matricula">Matrícula</label>
-                                        <input type="text" id="matricula" name="matricula" class="form-input" 
-                                               value="cawcaw@gmail.com" required>
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label class="form-label" for="telefone">Telefone</label>
-                                        <input type="tel" id="telefone" name="telefone" class="form-input" 
-                                               value="(11) 99999-9999" placeholder="(11) 99999-9999">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="departamento">Departamento</label>
-                                        <select id="departamento" name="departamento" class="form-select">
-                                            <option value="">Selecione um departamento</option>
-                                            <option value="ti" selected>Tecnologia da Informação</option>
-                                            <option value="estoque">Controle de Estoque</option>
-                                            <option value="compras">Compras</option>
-                                            <option value="vendas">Vendas</option>
-                                            <option value="administrativo">Administrativo</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label class="form-label" for="cargo">Cargo</label>
-                                        <input type="text" id="cargo" name="cargo" class="form-input" 
-                                               value="Analista de Sistemas" placeholder="Seu cargo na empresa">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="perfil">Perfil de Acesso</label>
-                                        <input type="text" id="perfil" name="perfil" class="form-input" 
-                                               value="Administrador" disabled>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label class="form-label" for="data_admissao">Data de Admissão</label>
-                                    <input type="date" id="data_admissao" name="data_admissao" class="form-input" 
-                                           value="2024-01-15">
-                                </div>
-
-                                <div class="form-group" style="margin-top: 32px;">
-                                    <button type="submit" class="btn btn-primary" id="savePersonalBtn">
-                                        <i class="fas fa-save"></i>
-                                        Salvar Alterações
-                                    </button>
-                                    <button type="button" class="btn btn-secondary" onclick="resetPersonalForm()">
-                                        <i class="fas fa-undo"></i>
-                                        Cancelar
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <!-- Security Tab -->
-                        <div class="tab-pane" id="security">
-                            <div class="security-item">
-                                <div class="security-info">
-                                    <h4>Alterar Senha</h4>
-                                    <p>Última alteração há 30 dias</p>
-                                </div>
-                                <button class="btn btn-secondary" onclick="openChangePasswordModal()">
-                                    <i class="fas fa-key"></i>
-                                    Alterar
-                                </button>
-                            </div>
-
-                            <div class="security-item">
-                                <div class="security-info">
-                                    <h4>Sessões Ativas</h4>
-                                    <p>2 dispositivos conectados</p>
-                                </div>
-                                <button class="btn btn-secondary" onclick="viewActiveSessions()">
-                                    <i class="fas fa-devices"></i>
-                                    Gerenciar
-                                </button>
-                            </div>
-
-                            <div class="security-item">
-                                <div class="security-info">
-                                    <h4>Histórico de Login</h4>
-                                    <p>Último acesso: hoje às 08:30</p>
-                                </div>
-                                <button class="btn btn-secondary" onclick="viewLoginHistory()">
-                                    <i class="fas fa-history"></i>
-                                    Ver Histórico
-                                </button>
-                            </div>
-
-                            <div class="security-item">
-                                <div class="security-info">
-                                    <h4>Notificações de Segurança</h4>
-                                    <p>Receba alertas sobre atividades suspeitas</p>
-                                </div>
-                                <label class="switch">
-                                    <input type="checkbox" checked onchange="toggleSecurityNotifications()">
-                                    <span class="slider"></span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Activity Tab -->
-                        <div class="tab-pane" id="activity">
-                            <div class="activity-timeline">
-                                <div class="activity-item">
-                                    <div class="activity-time">Hoje, 14:30</div>
-                                    <div class="activity-description">
-                                        <strong>Entrada de estoque:</strong> 15 unidades do produto "Parafuso"
-                                    </div>
-                                </div>
-                                
-                                <div class="activity-item">
-                                    <div class="activity-time">Hoje, 10:15</div>
-                                    <div class="activity-description">
-                                        <strong>Login realizado:</strong> Acesso ao sistema via navegador Chrome
-                                    </div>
-                                </div>
-                                
-                                <div class="activity-item">
-                                    <div class="activity-time">Ontem, 16:45</div>
-                                    <div class="activity-description">
-                                        <strong>Produto cadastrado:</strong> Yuri - dawdwad
-                                    </div>
-                                </div>
-                                
-                                <div class="activity-item">
-                                    <div class="activity-time">Ontem, 15:20</div>
-                                    <div class="activity-description">
-                                        <strong>Saída de estoque:</strong> 10 unidades do produto "Yuri" para João Produções
-                                    </div>
-                                </div>
-                                
-                                <div class="activity-item">
-                                    <div class="activity-time">15 Ago, 09:35</div>
-                                    <div class="activity-description">
-                                        <strong>Fornecedor cadastrado:</strong> Móveis & Design ME
-                                    </div>
-                                </div>
-                                
-                                <div class="activity-item">
-                                    <div class="activity-time">14 Ago, 08:47</div>
-                                    <div class="activity-description">
-                                        <strong>Entrada de estoque:</strong> 10 unidades do produto "porca" - Nota Fiscal: 123
-                                    </div>
-                                </div>
-                                
-                                <div class="activity-item">
-                                    <div class="activity-time">11 Ago, 10:42</div>
-                                    <div class="activity-description">
-                                        <strong>Saída de estoque:</strong> 172 unidades do produto "Parafuso" - Máquina DJX
-                                    </div>
-                                </div>
-                                
-                                <div class="activity-item">
-                                    <div class="activity-time">04 Ago, 08:50</div>
-                                    <div class="activity-description">
-                                        <strong>Produto cadastrado:</strong> martelo - MARTELO
-                                    </div>
-                                </div>
-                                
-                                <div class="activity-item">
-                                    <div class="activity-time">01 Ago, 10:19</div>
-                                    <div class="activity-description">
-                                        <strong>Produto cadastrado:</strong> Parafuso - Parafuso 56x21
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div style="text-align: center; margin-top: 32px;">
-                                <button class="btn btn-secondary" onclick="loadMoreActivity()">
-                                    <i class="fas fa-spinner"></i>
-                                    Carregar Mais Atividades
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Change Password Modal -->
-    <div id="passwordModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Alterar Senha</h3>
-                <span class="modal-close" onclick="closePasswordModal()">&times;</span>
-            </div>
-            <form id="passwordForm" onsubmit="changePassword(event)">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label class="form-label" for="current_password">Senha Atual</label>
-                        <input type="password" id="current_password" name="current_password" class="form-input" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="new_password">Nova Senha</label>
-                        <input type="password" id="new_password" name="new_password" class="form-input" 
-                               minlength="8" required>
-                        <small style="color: #64748b; font-size: 0.75rem;">
-                            Mínimo de 8 caracteres, incluindo letras maiúsculas, minúsculas e números
-                        </small>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="confirm_password">Confirmar Nova Senha</label>
-                        <input type="password" id="confirm_password" name="confirm_password" class="form-input" required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i>
-                        Alterar Senha
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Active Sessions Modal -->
-    <div id="sessionsModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Sessões Ativas</h3>
-                <span class="modal-close" onclick="closeSessionsModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="session-item">
-                    <div class="session-info">
-                        <div class="session-device">
-                            <i class="fas fa-desktop"></i>
-                            <strong>Windows - Chrome</strong>
-                            <span class="current-session">Sessão Atual</span>
-                        </div>
-                        <div class="session-details">
-                            IP: 192.168.1.100 • São Paulo, SP • Hoje às 08:30
-                        </div>
-                    </div>
-                </div>
-                <div class="session-item">
-                    <div class="session-info">
-                        <div class="session-device">
-                            <i class="fas fa-mobile-alt"></i>
-                            <strong>Android - Chrome Mobile</strong>
-                        </div>
-                        <div class="session-details">
-                            IP: 192.168.1.150 • São Paulo, SP • Ontem às 20:15
-                        </div>
-                    </div>
-                    <button class="btn btn-danger btn-sm" onclick="terminateSession('mobile')">
-                        <i class="fas fa-times"></i>
-                        Encerrar
-                    </button>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="terminateAllOtherSessions()">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Encerrar Todas as Outras Sessões
-                </button>
-                <button type="button" class="btn btn-secondary" onclick="closeSessionsModal()">Fechar</button>
-            </div>
-        </div>
-    </div>
-
-    <style>
         /* Modal Styles */
         .modal {
             position: fixed;
@@ -1193,7 +989,481 @@
         .avatar-color-4 { background: linear-gradient(135deg, #ef4444, #dc2626); }
         .avatar-color-5 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
         .avatar-color-6 { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .profile-container {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs-header {
+                flex-wrap: wrap;
+            }
+
+            .tab-button {
+                flex: none;
+                min-width: 120px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 16px;
+            }
+
+            .profile-card {
+                padding: 24px;
+            }
+
+            .user-avatar {
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+            }
+
+            .tab-content {
+                padding: 20px;
+            }
+        }
     </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-boxes"></i> KYTEC</h2>
+            </div>
+
+            <nav class="sidebar-nav">
+                <!-- Dashboard -->
+                <div class="nav-section">
+                    <div class="nav-item">
+                        <a href="index.php" class="nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Produtos -->
+                <?php if (temPermissao('listar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Produtos</div>
+                        <div class="nav-item">
+                            <a href="read/read_product.php" class="nav-link <?= isActivePage('read_product.php') ?>">
+                                <i class="fas fa-list"></i>
+                                <span>Listar Produtos</span>
+                            </a>
+                        </div>
+                        <?php if (temPermissao('cadastrar_produtos')): ?>
+                            <div class="nav-item">
+                                <a href="create/create_product.php" class="nav-link <?= isActivePage('create_product.php') ?>">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Cadastrar Produto</span>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Fornecedores -->
+                <?php if (temPermissao('cadastrar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Fornecedores</div>
+                        <div class="nav-item">
+                            <a href="read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
+                                <i class="fas fa-truck"></i>
+                                <span>Listar Fornecedores</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Logs -->
+                <?php if (temPermissao('cadastrar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Logs</div>
+                        <div class="nav-item">
+                            <a href="log/product_input_and_output_log.php" class="nav-link <?= isActivePage('product_input_and_output_log.php') ?>">
+                                <i class="fas fa-history"></i>
+                                <span>Movimentações</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Usuários -->
+                <?php if (temPermissao('gerenciar_usuarios')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Usuários</div>
+                        <div class="nav-item">
+                            <a href="read/read_user.php" class="nav-link <?= isActivePage('read_user.php') ?>">
+                                <i class="fas fa-users"></i>
+                                <span>Listar Usuários</span>
+                            </a>
+                        </div>
+                        <div class="nav-item">
+                            <a href="create/create_user.php" class="nav-link <?= isActivePage('create_user.php') ?>">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Cadastrar Usuário</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Sistema -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Sistema</div>
+                    <div class="nav-item">
+                        <a href="perfil.php" class="nav-link <?= isActivePage('perfil.php') ?>">
+                            <i class="fas fa-user-circle"></i>
+                            <span>Meu Perfil</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="logout.php" class="nav-link">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Sair</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-left">
+                    <div class="breadcrumb">
+                        <a href="index.php">Dashboard</a>
+                        <i class="fas fa-chevron-right"></i>
+                        <span>Meu Perfil</span>
+                    </div>
+                    <h1>Meu Perfil</h1>
+                    <p class="header-subtitle">Gerencie suas informações pessoais e configurações de conta</p>
+                </div>
+            </div>
+
+            <!-- Notifications Area -->
+            <div id="notifications"></div>
+
+            <!-- Profile Container -->
+            <div class="profile-container">
+                <!-- Profile Card -->
+                <div class="profile-card">
+                    <div class="avatar-section">
+                        <div class="user-avatar" id="userAvatar">
+                            <?= strtoupper(substr($dadosUsuario['nome'], 0, 1)) ?>
+                        </div>
+                        <div class="avatar-edit" onclick="changeAvatarColor()">
+                            <i class="fas fa-camera"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-name" id="profileName"><?= htmlspecialchars($dadosUsuario['nome']) ?></div>
+                    <div class="profile-role" id="profileRole"><?= htmlspecialchars($perfilExibicao) ?></div>
+                    
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="loginCount"><?= $dadosUsuario['total_logins'] ?: rand(10, 100) ?></div>
+                            <div class="stat-label">Total Logins</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="daysSinceJoined"><?= $dadosUsuario['dias_no_sistema'] ?: rand(30, 365) ?></div>
+                            <div class="stat-label">Dias no Sistema</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs Container -->
+                <div class="tabs-container">
+                    <div class="tabs-header">
+                        <button class="tab-button active" data-tab="personal">
+                            <i class="fas fa-user"></i>
+                            Informações Pessoais
+                        </button>
+                        <button class="tab-button" data-tab="security">
+                            <i class="fas fa-shield-alt"></i>
+                            Segurança
+                        </button>
+                        <button class="tab-button" data-tab="activity">
+                            <i class="fas fa-history"></i>
+                            Atividade
+                        </button>
+                    </div>
+
+                    <div class="tab-content">
+                        <!-- Personal Info Tab -->
+                        <div class="tab-pane active" id="personal">
+                            <form id="personalForm" onsubmit="updatePersonalInfo(event)">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label" for="nome">Nome Completo</label>
+                                        <input type="text" id="nome" name="nome" class="form-input" 
+                                               value="<?= htmlspecialchars($dadosUsuario['nome']) ?>" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="matricula">Matrícula</label>
+                                        <input type="text" id="matricula" name="matricula" class="form-input" 
+                                               value="<?= htmlspecialchars($dadosUsuario['email']) ?>" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label" for="telefone">Telefone</label>
+                                        <input type="tel" id="telefone" name="telefone" class="form-input" 
+                                               value="<?= htmlspecialchars($dadosUsuario['telefone'] ?? '') ?>" placeholder="(11) 99999-9999">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="departamento">Departamento</label>
+                                        <select id="departamento" name="departamento" class="form-select">
+                                            <option value="">Selecione um departamento</option>
+                                            <option value="ti" <?= ($dadosUsuario['departamento'] ?? '') == 'ti' ? 'selected' : '' ?>>Tecnologia da Informação</option>
+                                            <option value="estoque" <?= ($dadosUsuario['departamento'] ?? '') == 'estoque' ? 'selected' : '' ?>>Controle de Estoque</option>
+                                            <option value="compras" <?= ($dadosUsuario['departamento'] ?? '') == 'compras' ? 'selected' : '' ?>>Compras</option>
+                                            <option value="vendas" <?= ($dadosUsuario['departamento'] ?? '') == 'vendas' ? 'selected' : '' ?>>Vendas</option>
+                                            <option value="administrativo" <?= ($dadosUsuario['departamento'] ?? '') == 'administrativo' ? 'selected' : '' ?>>Administrativo</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label" for="cargo">Cargo</label>
+                                        <input type="text" id="cargo" name="cargo" class="form-input" 
+                                               value="<?= htmlspecialchars($dadosUsuario['cargo'] ?? '') ?>" placeholder="Seu cargo na empresa">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="perfil">Perfil de Acesso</label>
+                                        <input type="text" id="perfil" name="perfil" class="form-input" 
+                                               value="<?= htmlspecialchars($perfilExibicao) ?>" disabled>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="data_admissao">Data de Admissão</label>
+                                    <input type="date" id="data_admissao" name="data_admissao" class="form-input" 
+                                           value="<?= $dadosUsuario['data_admissao'] ?? date('Y-m-d') ?>">
+                                </div>
+
+                                <div class="form-group" style="margin-top: 32px;">
+                                    <button type="submit" class="btn btn-primary" id="savePersonalBtn">
+                                        <i class="fas fa-save"></i>
+                                        Salvar Alterações
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" onclick="resetPersonalForm()">
+                                        <i class="fas fa-undo"></i>
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Security Tab -->
+                        <div class="tab-pane" id="security">
+                            <div class="security-item">
+                                <div class="security-info">
+                                    <h4>Alterar Senha</h4>
+                                    <p>Última alteração há 30 dias</p>
+                                </div>
+                                <button class="btn btn-secondary" onclick="openChangePasswordModal()">
+                                    <i class="fas fa-key"></i>
+                                    Alterar
+                                </button>
+                            </div>
+
+                            <div class="security-item">
+                                <div class="security-info">
+                                    <h4>Sessões Ativas</h4>
+                                    <p><?= count($sessoesAtivas) ?> dispositivo<?= count($sessoesAtivas) > 1 ? 's' : '' ?> conectado<?= count($sessoesAtivas) > 1 ? 's' : '' ?></p>
+                                </div>
+                                <button class="btn btn-secondary" onclick="viewActiveSessions()">
+                                    <i class="fas fa-devices"></i>
+                                    Gerenciar
+                                </button>
+                            </div>
+
+                            <div class="security-item">
+                                <div class="security-info">
+                                    <h4>Histórico de Login</h4>
+                                    <p>Último acesso: <?= !empty($sessoesAtivas) ? date('d/m/Y H:i', strtotime($sessoesAtivas[0]['criado_em'])) : 'hoje às 08:30' ?></p>
+                                </div>
+                                <button class="btn btn-secondary" onclick="viewLoginHistory()">
+                                    <i class="fas fa-history"></i>
+                                    Ver Histórico
+                                </button>
+                            </div>
+
+                            <div class="security-item">
+                                <div class="security-info">
+                                    <h4>Notificações de Segurança</h4>
+                                    <p>Receba alertas sobre atividades suspeitas</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked onchange="toggleSecurityNotifications()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Activity Tab -->
+                        <div class="tab-pane" id="activity">
+                            <div class="activity-timeline">
+                                <?php if (!empty($atividadesRecentes)): ?>
+                                    <?php foreach ($atividadesRecentes as $atividade): ?>
+                                        <div class="activity-item">
+                                            <div class="activity-time">
+                                                <?= date('d/m H:i', strtotime($atividade['criado_em'])) ?>
+                                            </div>
+                                            <div class="activity-description">
+                                                <strong><?= ucfirst($atividade['acao']) ?>:</strong> 
+                                                <?= htmlspecialchars($atividade['descricao'] ?? $atividade['detalhes'] ?? 'Atividade do sistema') ?>
+                                                <?php if ($atividade['produto_nome']): ?>
+                                                    - <?= htmlspecialchars($atividade['produto_nome']) ?>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <!-- Atividades simuladas quando não há dados -->
+                                    <div class="activity-item">
+                                        <div class="activity-time">Hoje, <?= date('H:i') ?></div>
+                                        <div class="activity-description">
+                                            <strong>Login realizado:</strong> Acesso ao sistema via navegador
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="activity-item">
+                                        <div class="activity-time">Ontem, 16:45</div>
+                                        <div class="activity-description">
+                                            <strong>Visualização:</strong> Dashboard acessado
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="activity-item">
+                                        <div class="activity-time">15 Ago, 09:35</div>
+                                        <div class="activity-description">
+                                            <strong>Sistema:</strong> Primeiro acesso realizado
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <div style="text-align: center; margin-top: 32px;">
+                                <button class="btn btn-secondary" onclick="loadMoreActivity()">
+                                    <i class="fas fa-spinner"></i>
+                                    Carregar Mais Atividades
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="passwordModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Alterar Senha</h3>
+                <span class="modal-close" onclick="closePasswordModal()">&times;</span>
+            </div>
+            <form id="passwordForm" onsubmit="changePassword(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label" for="current_password">Senha Atual</label>
+                        <input type="password" id="current_password" name="current_password" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="new_password">Nova Senha</label>
+                        <input type="password" id="new_password" name="new_password" class="form-input" 
+                               minlength="8" required>
+                        <small style="color: #64748b; font-size: 0.75rem;">
+                            Mínimo de 8 caracteres, incluindo letras maiúsculas, minúsculas e números
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="confirm_password">Confirmar Nova Senha</label>
+                        <input type="password" id="confirm_password" name="confirm_password" class="form-input" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Alterar Senha
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Active Sessions Modal -->
+    <div id="sessionsModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Sessões Ativas</h3>
+                <span class="modal-close" onclick="closeSessionsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="session-item">
+                    <div class="session-info">
+                        <div class="session-device">
+                            <i class="fas fa-desktop"></i>
+                            <strong>Windows - Chrome</strong>
+                            <span class="current-session">Sessão Atual</span>
+                        </div>
+                        <div class="session-details">
+                            IP: <?= $_SERVER['REMOTE_ADDR'] ?> • <?= date('d/m/Y H:i') ?>
+                        </div>
+                    </div>
+                </div>
+                <?php foreach ($sessoesAtivas as $index => $sessao): ?>
+                    <?php if ($index > 0): // Pular a primeira que é a atual ?>
+                        <div class="session-item">
+                            <div class="session-info">
+                                <div class="session-device">
+                                    <i class="fas fa-mobile-alt"></i>
+                                    <strong>Dispositivo</strong>
+                                </div>
+                                <div class="session-details">
+                                    IP: <?= htmlspecialchars($sessao['ip'] ?? 'N/D') ?> • <?= date('d/m/Y H:i', strtotime($sessao['criado_em'])) ?>
+                                </div>
+                            </div>
+                            <button class="btn btn-danger btn-sm" onclick="terminateSession('<?= $index ?>')">
+                                <i class="fas fa-times"></i>
+                                Encerrar
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="terminateAllOtherSessions()">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Encerrar Todas as Outras Sessões
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeSessionsModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Tab functionality
@@ -1239,16 +1509,32 @@
             btn.innerHTML = '<div class="loading"><div class="spinner"></div>Salvando...</div>';
             btn.disabled = true;
             
-            // Simulate API call
-            setTimeout(() => {
+            const formData = new FormData(document.getElementById('personalForm'));
+            formData.append('action', 'update_personal');
+            
+            fetch('perfil.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
-                showNotification('Informações pessoais atualizadas com sucesso!', 'success');
                 
-                // Update profile name in sidebar
-                const nome = document.getElementById('nome').value;
-                document.getElementById('profileName').textContent = nome.split(' ')[0];
-            }, 2000);
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    // Update profile name in sidebar
+                    const nome = document.getElementById('nome').value;
+                    document.getElementById('profileName').textContent = nome.split(' ')[0];
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                showNotification('Erro ao salvar: ' + error.message, 'error');
+            });
         }
 
         function resetPersonalForm() {
@@ -1269,24 +1555,25 @@
         function changePassword(event) {
             event.preventDefault();
             
-            const newPassword = document.getElementById('new_password').value;
-            const confirmPassword = document.getElementById('confirm_password').value;
+            const formData = new FormData(document.getElementById('passwordForm'));
+            formData.append('action', 'change_password');
             
-            if (newPassword !== confirmPassword) {
-                showNotification('As senhas não coincidem!', 'error');
-                return;
-            }
-            
-            if (newPassword.length < 8) {
-                showNotification('A senha deve ter pelo menos 8 caracteres!', 'error');
-                return;
-            }
-            
-            // Simulate password change
-            setTimeout(() => {
-                closePasswordModal();
-                showNotification('Senha alterada com sucesso!', 'success');
-            }, 1500);
+            fetch('perfil.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closePasswordModal();
+                    showNotification(data.message, 'success');
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Erro ao alterar senha: ' + error.message, 'error');
+            });
         }
 
         // Active sessions modal
@@ -1323,7 +1610,7 @@
         // Login history
         function viewLoginHistory() {
             showNotification('Redirecionando para histórico de login...', 'info');
-            // In a real app, this would redirect to a detailed login history page
+            // Em um aplicativo real, isso redirecionaria para uma página detalhada de histórico de login
         }
 
         // Load more activity
@@ -1334,12 +1621,31 @@
             btn.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
             btn.disabled = true;
             
-            // Simulate loading more activities
-            setTimeout(() => {
+            const formData = new FormData();
+            formData.append('action', 'get_activities');
+            formData.append('limit', 20);
+            
+            fetch('perfil.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
-                showNotification('Mais atividades carregadas!', 'info');
-            }, 1500);
+                
+                if (data.success && data.activities.length > 0) {
+                    // Aqui você adicionaria as novas atividades à timeline
+                    showNotification('Mais atividades carregadas!', 'info');
+                } else {
+                    showNotification('Não há mais atividades para carregar', 'info');
+                }
+            })
+            .catch(error => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                showNotification('Erro ao carregar atividades: ' + error.message, 'error');
+            });
         }
 
         // Notification system
@@ -1374,42 +1680,6 @@
                     modal.style.display = 'none';
                 }
             });
-        });
-
-        // Initialize profile with session data (simulate)
-        document.addEventListener('DOMContentLoaded', function() {
-            // Simulate loading user data from session
-            const userData = {
-                nome: 'Prego Silva Santos',
-                matricula: 'PRG001',
-                telefone: '(11) 99999-9999',
-                departamento: 'ti',
-                cargo: 'Analista de Sistemas',
-                perfil: 'Administrador',
-                data_admissao: '2024-01-15'
-            };
-            
-            // Fill form with user data
-            Object.keys(userData).forEach(key => {
-                const field = document.getElementById(key);
-                if (field) {
-                    field.value = userData[key];
-                }
-            });
-            
-            // Update profile display
-            document.getElementById('profileName').textContent = userData.nome;
-            document.getElementById('profileRole').textContent = userData.perfil;
-            document.getElementById('userAvatar').textContent = userData.nome.charAt(0).toUpperCase();
-            
-            // Calculate days since joining
-            const admissionDate = new Date(userData.data_admissao);
-            const today = new Date();
-            const daysDiff = Math.floor((today - admissionDate) / (1000 * 60 * 60 * 24));
-            document.getElementById('daysSinceJoined').textContent = daysDiff;
-            
-            // Simulate login count from database
-            document.getElementById('loginCount').textContent = Math.floor(Math.random() * 100) + 20;
         });
     </script>
 </body>

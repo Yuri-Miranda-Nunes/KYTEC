@@ -316,7 +316,7 @@ try {
                     <?= htmlspecialchars($erro_exclusao) ?>
                 </div>
                 <div class="buttons">
-                    <a href="listar_produtos.php" class="btn btn-cancel">
+                    <a href="../read/focus_product.php" class="btn btn-cancel">
                         <i class="fas fa-arrow-left"></i>
                         Voltar
                     </a>
@@ -347,7 +347,7 @@ try {
                     <form method="POST" action="">
                         <input type="hidden" name="confirmar_exclusao" value="sim">
                         <div class="buttons">
-                            <a href="listar_produtos.php" class="btn btn-cancel">
+                            <a href="../read/focus_product.php" class="btn btn-cancel">  
                                 <i class="fas fa-times"></i>
                                 Cancelar
                             </a>

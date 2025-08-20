@@ -139,7 +139,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 // Função para determinar se a página atual está ativa
-function isActivePage($page) {
+function isActivePage($page)
+{
     $current = basename($_SERVER['PHP_SELF']);
     return $current === $page ? 'active' : '';
 }
@@ -286,10 +287,19 @@ function isActivePage($page) {
         .user-info {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 8px 16px;
-            background: #f1f5f9;
+            gap: 10px;
+            padding: 8px 12px;
             border-radius: 8px;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .user-info:hover {
+            background: rgba(0, 0, 0, 0.1);
+            /* fundo leve */
+            cursor: pointer;
+            transform: scale(1.02);
         }
 
         .user-avatar {
@@ -687,7 +697,7 @@ function isActivePage($page) {
                     <p class="header-subtitle">Adicione um novo usuário ao sistema</p>
                 </div>
                 <div class="header-right">
-                    <div class="user-info">
+                    <a href="../perfil.php" class="user-info">
                         <div class="user-avatar">
                             <?= strtoupper(substr($_SESSION['usuario_nome'], 0, 1)) ?>
                         </div>
@@ -695,12 +705,14 @@ function isActivePage($page) {
                             <h3><?= htmlspecialchars($_SESSION['usuario_nome']) ?></h3>
                             <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
                         </div>
-                    </div>
+                    </a>
+
                     <a href="logout.php" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i>
                         Sair
                     </a>
                 </div>
+
             </div>
 
             <!-- Messages -->

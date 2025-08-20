@@ -31,10 +31,10 @@ $colunasPermitidas = ['nome_empresa', 'atividade', 'telefone_representante', 'no
 
 // Validar ordem e direção
 if (!in_array($ordem, $colunasPermitidas)) {
-    $ordem = 'nome_empresa';
+  $ordem = 'nome_empresa';
 }
 if (!in_array($direcao, ['asc', 'desc'])) {
-    $direcao = 'asc';
+  $direcao = 'asc';
 }
 
 $sql = "SELECT * FROM fornecedores ORDER BY {$ordem} {$direcao}";
@@ -43,21 +43,22 @@ $fornecedores = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 function novaDirecao($coluna)
 {
-    $ordemAtual = $_GET['ordem'] ?? '';
-    $direcaoAtual = $_GET['direcao'] ?? 'asc';
-    return ($ordemAtual === $coluna && $direcaoAtual === 'asc') ? 'desc' : 'asc';
+  $ordemAtual = $_GET['ordem'] ?? '';
+  $direcaoAtual = $_GET['direcao'] ?? 'asc';
+  return ($ordemAtual === $coluna && $direcaoAtual === 'asc') ? 'desc' : 'asc';
 }
 
 function iconeOrdenacao($coluna)
 {
-    $ordemAtual = $_GET['ordem'] ?? '';
-    $direcaoAtual = $_GET['direcao'] ?? 'asc';
-    if ($ordemAtual === $coluna) {
-        return $direcaoAtual === 'asc' ? '↑' : '↓';
-    }
-    return '';
+  $ordemAtual = $_GET['ordem'] ?? '';
+  $direcaoAtual = $_GET['direcao'] ?? 'asc';
+  if ($ordemAtual === $coluna) {
+    return $direcaoAtual === 'asc' ? '↑' : '↓';
+  }
+  return '';
 }
-function isActivePage($page) {
+function isActivePage($page)
+{
   $current = basename($_SERVER['PHP_SELF']);
   return $current === $page ? 'active' : '';
 }
@@ -65,11 +66,11 @@ function isActivePage($page) {
 
 function urlOrdenar($coluna)
 {
-    $direcao = novaDirecao($coluna);
-    $query = $_GET;
-    $query['ordem'] = $coluna;
-    $query['direcao'] = $direcao;
-    return '?' . http_build_query($query);
+  $direcao = novaDirecao($coluna);
+  $query = $_GET;
+  $query['ordem'] = $coluna;
+  $query['direcao'] = $direcao;
+  return '?' . http_build_query($query);
 }
 ?>
 <!DOCTYPE html>
@@ -381,13 +382,22 @@ function urlOrdenar($coluna)
     }
 
     .user-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 8px 16px;
-      background: #f1f5f9;
-      border-radius: 8px;
-    }
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .user-info:hover {
+            background: rgba(0, 0, 0, 0.1);
+            /* fundo leve */
+            cursor: pointer;
+            transform: scale(1.02);
+        }
 
     .user-avatar {
       width: 40px;
@@ -576,7 +586,7 @@ function urlOrdenar($coluna)
       border-radius: 8px;
       margin-bottom: 20px;
       font-weight: 500;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .order-link {
@@ -586,7 +596,9 @@ function urlOrdenar($coluna)
       font-weight: inherit;
     }
 
-    .order-link:visited, .order-link:active, .order-link:focus {
+    .order-link:visited,
+    .order-link:active,
+    .order-link:focus {
       color: inherit;
       text-decoration: none;
     }
@@ -671,105 +683,105 @@ function urlOrdenar($coluna)
   <div class="dashboard">
     <!-- Sidebar -->
     <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2><i class="fas fa-boxes"></i> KYTEC</h2>
+      <div class="sidebar-header">
+        <h2><i class="fas fa-boxes"></i> KYTEC</h2>
+      </div>
+
+      <nav class="sidebar-nav">
+        <!-- Dashboard -->
+        <div class="nav-section">
+          <div class="nav-item">
+            <a href="../index.php" class="nav-link <?= isActivePage('index.php') ?>">
+              <i class="fas fa-chart-line"></i>
+              <span>Dashboard</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Produtos -->
+        <?php if (temPermissao('listar_produtos')): ?>
+          <div class="nav-section">
+            <div class="nav-section-title">Produtos</div>
+            <div class="nav-item">
+              <a href="../read/read_product.php" class="nav-link <?= isActivePage('read_product.php') ?>">
+                <i class="fas fa-list"></i>
+                <span>Listar Produtos</span>
+              </a>
             </div>
+            <?php if (temPermissao('cadastrar_produtos')): ?>
+              <div class="nav-item">
+                <a href="../create/create_product.php"
+                  class="nav-link <?= isActivePage('create_product.php') ?>">
+                  <i class="fas fa-plus"></i>
+                  <span>Cadastrar Produto</span>
+                </a>
+              </div>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
 
-            <nav class="sidebar-nav">
-                <!-- Dashboard -->
-                <div class="nav-section">
-                    <div class="nav-item">
-                        <a href="../index.php" class="nav-link <?= isActivePage('index.php') ?>">
-                            <i class="fas fa-chart-line"></i>
-                            <span>Dashboard</span>
-                        </a>
-                    </div>
-                </div>
+        <!-- Fornecedores -->
+        <div class="nav-section">
+          <div class="nav-section-title">Fornecedores</div>
+          <div class="nav-item">
+            <a href="../read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
+              <i class="fas fa-truck"></i>
+              <span>Listar Fornecedores</span>
+            </a>
+          </div>
+        </div>
 
-                <!-- Produtos -->
-                <?php if (temPermissao('listar_produtos')): ?>
-                    <div class="nav-section">
-                        <div class="nav-section-title">Produtos</div>
-                        <div class="nav-item">
-                            <a href="../read/read_product.php" class="nav-link <?= isActivePage('read_product.php') ?>">
-                                <i class="fas fa-list"></i>
-                                <span>Listar Produtos</span>
-                            </a>
-                        </div>
-                        <?php if (temPermissao('cadastrar_produtos')): ?>
-                            <div class="nav-item">
-                                <a href="../create/create_product.php"
-                                    class="nav-link <?= isActivePage('create_product.php') ?>">
-                                    <i class="fas fa-plus"></i>
-                                    <span>Cadastrar Produto</span>
-                                </a>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
+        <!-- Logs -->
+        <?php if (temPermissao('listar_produtos')): ?>
+          <div class="nav-section">
+            <div class="nav-section-title">Logs</div>
+            <div class="nav-item">
+              <a href="../log/product_input_and_output_log.php"
+                class="nav-link <?= isActivePage('product_input_and_output_log.php') ?>">
+                <i class="fas fa-history"></i>
+                <span>Movimentações</span>
+              </a>
+            </div>
+          </div>
+        <?php endif; ?>
 
-                <!-- Fornecedores -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Fornecedores</div>
-                    <div class="nav-item">
-                        <a href="../read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
-                            <i class="fas fa-truck"></i>
-                            <span>Listar Fornecedores</span>
-                        </a>
-                    </div>
-                </div>
+        <!-- Usuários -->
+        <?php if (temPermissao('gerenciar_usuarios')): ?>
+          <div class="nav-section">
+            <div class="nav-section-title">Usuários</div>
+            <div class="nav-item">
+              <a href="../read/read_user.php" class="nav-link <?= isActivePage('read_user.php') ?>">
+                <i class="fas fa-users"></i>
+                <span>Listar Usuários</span>
+              </a>
+            </div>
+            <div class="nav-item">
+              <a href="../create/create_user.php" class="nav-link <?= isActivePage('create_user.php') ?>">
+                <i class="fas fa-user-plus"></i>
+                <span>Cadastrar Usuário</span>
+              </a>
+            </div>
+          </div>
+        <?php endif; ?>
 
-                <!-- Logs -->
-                <?php if (temPermissao('listar_produtos')): ?>
-                    <div class="nav-section">
-                        <div class="nav-section-title">Logs</div>
-                        <div class="nav-item">
-                            <a href="../log/product_input_and_output_log.php"
-                                class="nav-link <?= isActivePage('product_input_and_output_log.php') ?>">
-                                <i class="fas fa-history"></i>
-                                <span>Movimentações</span>
-                            </a>
-                        </div>
-                    </div>
-                <?php endif; ?>
-
-                <!-- Usuários -->
-                <?php if (temPermissao('gerenciar_usuarios')): ?>
-                    <div class="nav-section">
-                        <div class="nav-section-title">Usuários</div>
-                        <div class="nav-item">
-                            <a href="../read/read_user.php" class="nav-link <?= isActivePage('read_user.php') ?>">
-                                <i class="fas fa-users"></i>
-                                <span>Listar Usuários</span>
-                            </a>
-                        </div>
-                        <div class="nav-item">
-                            <a href="../create/create_user.php" class="nav-link <?= isActivePage('create_user.php') ?>">
-                                <i class="fas fa-user-plus"></i>
-                                <span>Cadastrar Usuário</span>
-                            </a>
-                        </div>
-                    </div>
-                <?php endif; ?>
-
-                <!-- Sistema -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Sistema</div>
-                    <div class="nav-item">
-                        <a href="../perfil.php" class="nav-link <?= isActivePage('perfil.php') ?>">
-                            <i class="fas fa-user-circle"></i>
-                            <span>Meu Perfil</span>
-                        </a>
-                    </div>
-                    <div class="nav-item">
-                        <a href="../logout.php" class="nav-link">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Sair</span>
-                        </a>
-                    </div>
-                </div>
-            </nav>
-        </aside>
+        <!-- Sistema -->
+        <div class="nav-section">
+          <div class="nav-section-title">Sistema</div>
+          <div class="nav-item">
+            <a href="../perfil.php" class="nav-link <?= isActivePage('perfil.php') ?>">
+              <i class="fas fa-user-circle"></i>
+              <span>Meu Perfil</span>
+            </a>
+          </div>
+          <div class="nav-item">
+            <a href="../logout.php" class="nav-link">
+              <i class="fas fa-sign-out-alt"></i>
+              <span>Sair</span>
+            </a>
+          </div>
+        </div>
+      </nav>
+    </aside>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -790,7 +802,7 @@ function urlOrdenar($coluna)
         </div>
 
         <div class="header-right">
-          <div class="user-info">
+          <a href="../perfil.php" class="user-info">
             <div class="user-avatar">
               <?= strtoupper(substr($_SESSION['usuario_nome'], 0, 1)) ?>
             </div>
@@ -798,8 +810,9 @@ function urlOrdenar($coluna)
               <h3><?= htmlspecialchars($_SESSION['usuario_nome']) ?></h3>
               <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
             </div>
-          </div>
-          <a href="../logout.php" class="btn-logout">
+          </a>
+
+          <a href="logout.php" class="btn-logout">
             <i class="fas fa-sign-out-alt"></i>
             Sair
           </a>
@@ -1096,4 +1109,5 @@ function urlOrdenar($coluna)
     });
   </script>
 </body>
+
 </html>
