@@ -44,12 +44,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $bd = new BancoDeDados();
 
         // Validar campos obrigatórios
+        $matricula = trim($_POST['matricula'] ?? '');
         $nome = trim($_POST['nome'] ?? '');
         $email = trim($_POST['email'] ?? '');
+        $telefone = trim($_POST['telefone'] ?? '');
+        $departamento = trim($_POST['departamento'] ?? '');
+        $cargo = trim($_POST['cargo'] ?? '');
+        $data_admissao = $_POST['data_admissao'] ?? '';
         $senha = $_POST['senha'] ?? '';
         $confirmar_senha = $_POST['confirmar_senha'] ?? '';
         $perfil = $_POST['perfil'] ?? '';
         $ativo = isset($_POST['ativo']) ? 1 : 0;
+
+        if (empty($matricula)) {
+            throw new Exception("Matrícula é obrigatória.");
+        }
+
+        if (!is_numeric($matricula) || $matricula <= 0) {
+            throw new Exception("Matrícula deve ser um número válido.");
+        }
 
         if (empty($nome)) {
             throw new Exception("Nome do usuário é obrigatório.");
@@ -79,10 +92,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Perfil do usuário é obrigatório.");
         }
 
+        // Validar data de admissão se fornecida
+        if (!empty($data_admissao)) {
+            $date = DateTime::createFromFormat('Y-m-d', $data_admissao);
+            if (!$date || $date->format('Y-m-d') !== $data_admissao) {
+                throw new Exception("Data de admissão inválida.");
+            }
+        }
+
+        // Verificar se matrícula já existe
+        $stmt_check_matricula = $bd->pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE matricula = ?");
+        $stmt_check_matricula->execute([$matricula]);
+        if ($stmt_check_matricula->fetchColumn() > 0) {
+            throw new Exception("Esta matrícula já está cadastrada.");
+        }
+
         // Verificar se email já existe
-        $stmt_check = $bd->pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ?");
-        $stmt_check->execute([$email]);
-        if ($stmt_check->fetchColumn() > 0) {
+        $stmt_check_email = $bd->pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ?");
+        $stmt_check_email->execute([$email]);
+        if ($stmt_check_email->fetchColumn() > 0) {
             throw new Exception("Este email já está cadastrado.");
         }
 
@@ -93,10 +121,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Hash da senha
             $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
 
+            // Preparar valores para inserção (NULL para campos vazios)
+            $telefone = !empty($telefone) ? $telefone : null;
+            $departamento = !empty($departamento) ? $departamento : null;
+            $cargo = !empty($cargo) ? $cargo : null;
+            $data_admissao = !empty($data_admissao) ? $data_admissao : null;
+
             // Inserir usuário
-            $sql = "INSERT INTO usuarios (nome, email, senha, perfil, ativo) VALUES (?, ?, ?, ?, ?)";
+            $sql = "INSERT INTO usuarios (matricula, nome, email, telefone, departamento, cargo, data_admissao, senha, perfil, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $bd->pdo->prepare($sql);
-            $stmt->execute([$nome, $email, $senha_hash, $perfil, $ativo]);
+            $stmt->execute([
+                $matricula,
+                $nome,
+                $email,
+                $telefone,
+                $departamento,
+                $cargo,
+                $data_admissao,
+                $senha_hash,
+                $perfil,
+                $ativo
+            ]);
 
             $usuario_id = $bd->pdo->lastInsertId();
 
@@ -127,8 +172,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: ../read/read_user.php");
             exit;
 
-            // Limpar campos após sucesso
-            $_POST = [];
         } catch (Exception $e) {
             $bd->pdo->rollBack();
             throw $e;
@@ -138,6 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tipo_mensagem = "error";
     }
 }
+
 // Função para determinar se a página atual está ativa
 function isActivePage($page)
 {
@@ -297,7 +341,6 @@ function isActivePage($page)
 
         .user-info:hover {
             background: rgba(0, 0, 0, 0.1);
-            /* fundo leve */
             cursor: pointer;
             transform: scale(1.02);
         }
@@ -732,6 +775,22 @@ function isActivePage($page)
 
                 <form method="POST" action="">
                     <div class="form-grid">
+                        <!-- Matrícula -->
+                        <div class="form-group">
+                            <label class="form-label" for="matricula">
+                                Matrícula <span class="required">*</span>
+                            </label>
+                            <input type="number"
+                                id="matricula"
+                                name="matricula"
+                                class="form-input"
+                                value="<?= htmlspecialchars($_POST['matricula'] ?? '') ?>"
+                                required
+                                min="1"
+                                placeholder="Ex: 123456">
+                            <div class="input-hint">Número único de identificação do funcionário</div>
+                        </div>
+
                         <!-- Nome -->
                         <div class="form-group">
                             <label class="form-label" for="nome">
@@ -760,6 +819,82 @@ function isActivePage($page)
                                 required
                                 placeholder="Ex: joao@fabrica.com">
                             <div class="input-hint">Email único para login no sistema</div>
+                        </div>
+
+                        <!-- Telefone -->
+                        <div class="form-group">
+                            <label class="form-label" for="telefone">
+                                Telefone
+                            </label>
+                            <input type="tel"
+                                id="telefone"
+                                name="telefone"
+                                class="form-input"
+                                value="<?= htmlspecialchars($_POST['telefone'] ?? '') ?>"
+                                placeholder="Ex: (11) 99999-9999">
+                            <div class="input-hint">Telefone de contato do funcionário</div>
+                        </div>
+
+                        <!-- Departamento -->
+                        <div class="form-group">
+                            <label class="form-label" for="departamento">
+                                Departamento
+                            </label>
+                            <select id="departamento" name="departamento" class="form-select">
+                                <option value="">Selecione um departamento</option>
+                                <option value="administracao" <?= ($_POST['departamento'] ?? '') === 'administracao' ? 'selected' : '' ?>>
+                                    Administração
+                                </option>
+                                <option value="vendas" <?= ($_POST['departamento'] ?? '') === 'vendas' ? 'selected' : '' ?>>
+                                    Vendas
+                                </option>
+                                <option value="compras" <?= ($_POST['departamento'] ?? '') === 'compras' ? 'selected' : '' ?>>
+                                    Compras
+                                </option>
+                                <option value="estoque" <?= ($_POST['departamento'] ?? '') === 'estoque' ? 'selected' : '' ?>>
+                                    Estoque
+                                </option>
+                                <option value="producao" <?= ($_POST['departamento'] ?? '') === 'producao' ? 'selected' : '' ?>>
+                                    Produção
+                                </option>
+                                <option value="ti" <?= ($_POST['departamento'] ?? '') === 'ti' ? 'selected' : '' ?>>
+                                    T.I.
+                                </option>
+                                <option value="rh" <?= ($_POST['departamento'] ?? '') === 'rh' ? 'selected' : '' ?>>
+                                    Recursos Humanos
+                                </option>
+                                <option value="financeiro" <?= ($_POST['departamento'] ?? '') === 'financeiro' ? 'selected' : '' ?>>
+                                    Financeiro
+                                </option>
+                            </select>
+                            <div class="input-hint">Departamento onde o funcionário trabalha</div>
+                        </div>
+
+                        <!-- Cargo -->
+                        <div class="form-group">
+                            <label class="form-label" for="cargo">
+                                Cargo
+                            </label>
+                            <input type="text"
+                                id="cargo"
+                                name="cargo"
+                                class="form-input"
+                                value="<?= htmlspecialchars($_POST['cargo'] ?? '') ?>"
+                                placeholder="Ex: Analista de Sistemas">
+                            <div class="input-hint">Cargo ou função do funcionário</div>
+                        </div>
+
+                        <!-- Data de Admissão -->
+                        <div class="form-group">
+                            <label class="form-label" for="data_admissao">
+                                Data de Admissão
+                            </label>
+                            <input type="date"
+                                id="data_admissao"
+                                name="data_admissao"
+                                class="form-input"
+                                value="<?= htmlspecialchars($_POST['data_admissao'] ?? '') ?>">
+                            <div class="input-hint">Data de admissão na empresa</div>
                         </div>
 
                         <!-- Senha -->
@@ -865,7 +1000,7 @@ function isActivePage($page)
 
                     <!-- Form Actions -->
                     <div class="form-actions">
-                        <a href="listar_usuarios.php" class="btn btn-secondary">
+                        <a href="../read/read_user.php" class="btn btn-secondary">
                             <i class="fas fa-times"></i>
                             Cancelar
                         </a>
@@ -881,7 +1016,7 @@ function isActivePage($page)
 
     <script>
         // Auto-focus no primeiro campo
-        document.getElementById('nome').focus();
+        document.getElementById('matricula').focus();
 
         // Mostrar informações do perfil quando selecionado
         document.getElementById('perfil').addEventListener('change', function() {
@@ -921,12 +1056,31 @@ function isActivePage($page)
 
             if (senha !== confirmarSenha) {
                 this.setCustomValidity('As senhas não coincidem');
-                this.style.border
                 this.style.borderColor = '#dc2626';
             } else {
                 this.setCustomValidity('');
                 this.style.borderColor = '';
             }
+        });
+
+        // Validação de matrícula (apenas números)
+        document.getElementById('matricula').addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+        });
+
+        // Formatação do telefone
+        document.getElementById('telefone').addEventListener('input', function() {
+            let value = this.value.replace(/\D/g, '');
+            
+            if (value.length >= 11) {
+                value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+            } else if (value.length >= 7) {
+                value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+            } else if (value.length >= 3) {
+                value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+            }
+            
+            this.value = value;
         });
 
         // Disparar o evento de mudança para exibir as permissões no carregamento
@@ -935,6 +1089,20 @@ function isActivePage($page)
             const event = new Event('change');
             perfilSelect.dispatchEvent(event);
         });
+
+        // Validação da data de admissão (não pode ser futura)
+        document.getElementById('data_admissao').addEventListener('change', function() {
+            const dataAdmissao = new Date(this.value);
+            const hoje = new Date();
+            
+            if (dataAdmissao > hoje) {
+                alert('A data de admissão não pode ser futura.');
+                this.value = '';
+            }
+        });
+
+        // Definir data máxima como hoje
+        document.getElementById('data_admissao').max = new Date().toISOString().split('T')[0];
     </script>
 </body>
 
