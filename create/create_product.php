@@ -809,13 +809,7 @@ function isActivePage($page) {
                 </div>
 
                 <!-- Search Bar -->
-                <div class="search-container">
-                    <div class="search-wrapper">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar produtos, fornecedores, usuários...">
-                        <div id="searchResults" class="search-results"></div>
-                    </div>
-                </div>
+                
 
                 <div class="header-right">
                     <a href="../perfil.php" class="user-info">
