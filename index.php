@@ -44,22 +44,23 @@ class DashboardData
             $stmt = $this->pdo->query("SELECT COUNT(*) FROM produtos WHERE estoque_atual <= estoque_minimo AND ativo = 1");
             $stats['estoque_baixo'] = $stmt->fetchColumn();
 
-            // Valor total do estoque
-            $stmt = $this->pdo->query("SELECT SUM(estoque_atual * preco) as valor_total FROM produtos WHERE ativo = 1");
+            // Valor total do estoque (usando preco_unitario já que preco não existe)
+            $stmt = $this->pdo->query("SELECT SUM(estoque_atual * preco_unitario) as valor_total FROM produtos WHERE ativo = 1");
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             $stats['valor_total'] = $result['valor_total'] ?: 0;
 
             // Total de fornecedores
-            $stmt = $this->pdo->query("SELECT COUNT(*) FROM fornecedores WHERE ativo = 1");
+            $stmt = $this->pdo->query("SELECT COUNT(*) FROM fornecedores");
             $stats['total_fornecedores'] = $stmt->fetchColumn();
 
-            // Total de usuários (se existir a tabela)
-            try {
-                $stmt = $this->pdo->query("SELECT COUNT(*) FROM usuarios WHERE ativo = 1");
-                $stats['total_usuarios'] = $stmt->fetchColumn();
-            } catch (PDOException $e) {
-                $stats['total_usuarios'] = 0;
-            }
+            // Total de usuários
+            $stmt = $this->pdo->query("SELECT COUNT(*) FROM usuarios WHERE ativo = 1");
+            $stats['total_usuarios'] = $stmt->fetchColumn();
+
+            // Movimentações do mês atual
+            $stmt = $this->pdo->query("SELECT COUNT(*) FROM movimentacoes_estoque WHERE MONTH(criado_em) = MONTH(CURDATE()) AND YEAR(criado_em) = YEAR(CURDATE())");
+            $stats['movimentacoes_mes'] = $stmt->fetchColumn();
+
         } catch (PDOException $e) {
             // Em caso de erro, retorna valores zerados
             $stats = [
@@ -67,7 +68,8 @@ class DashboardData
                 'estoque_baixo' => 0,
                 'valor_total' => 0,
                 'total_fornecedores' => 0,
-                'total_usuarios' => 0
+                'total_usuarios' => 0,
+                'movimentacoes_mes' => 0
             ];
         }
 
@@ -78,11 +80,10 @@ class DashboardData
     public function getProdutosEstoqueBaixo($limit = 10)
     {
         try {
-            $sql = "SELECT p.nome, p.estoque_atual, p.estoque_minimo, f.nome as fornecedor_nome 
+            $sql = "SELECT p.nome, p.estoque_atual, p.estoque_minimo, p.codigo
                     FROM produtos p 
-                    LEFT JOIN fornecedores f ON p.fornecedor_id = f.id 
                     WHERE p.estoque_atual <= p.estoque_minimo AND p.ativo = 1 
-                    ORDER BY p.estoque_atual ASC 
+                    ORDER BY (p.estoque_atual - p.estoque_minimo) ASC 
                     LIMIT :limit";
 
             $stmt = $this->pdo->prepare($sql);
@@ -95,33 +96,24 @@ class DashboardData
         }
     }
 
-    // Buscar atividades recentes (movimentações de estoque)
+    // Buscar atividades recentes
     public function getAtividadesRecentes($limit = 10)
     {
         try {
-            // Verifica se existe tabela de logs
-            $tables = $this->pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-
-            if (in_array('movimentacoes_estoque', $tables)) {
-                $sql = "SELECT m.tipo, m.quantidade, m.data_movimentacao, m.observacao,
-                               p.nome as produto_nome, u.nome as usuario_nome
-                        FROM movimentacoes_estoque m
-                        LEFT JOIN produtos p ON m.produto_id = p.id
-                        LEFT JOIN usuarios u ON m.usuario_id = u.id
-                        ORDER BY m.data_movimentacao DESC
-                        LIMIT :limit";
-            } elseif (in_array('logs_produtos', $tables)) {
-                $sql = "SELECT l.acao as tipo, l.quantidade_atual as quantidade, l.data_log as data_movimentacao,
-                               l.observacao, p.nome as produto_nome, u.nome as usuario_nome
-                        FROM logs_produtos l
-                        LEFT JOIN produtos p ON l.produto_id = p.id
-                        LEFT JOIN usuarios u ON l.usuario_id = u.id
-                        ORDER BY l.data_log DESC
-                        LIMIT :limit";
-            } else {
-                // Se não há tabela de logs, cria dados simulados baseados nos produtos
-                return $this->getAtividadesSimuladas($limit);
-            }
+            $sql = "SELECT 
+                        m.tipo_movimentacao as tipo, 
+                        m.quantidade, 
+                        m.criado_em as data_movimentacao, 
+                        m.observacoes as observacao,
+                        p.nome as produto_nome, 
+                        u.nome as usuario_nome,
+                        m.motivo,
+                        m.destino
+                    FROM movimentacoes_estoque m
+                    LEFT JOIN produtos p ON m.produto_id = p.id_produto
+                    LEFT JOIN usuarios u ON m.usuario_id = u.id
+                    ORDER BY m.criado_em DESC
+                    LIMIT :limit";
 
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
@@ -129,52 +121,11 @@ class DashboardData
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            return $this->getAtividadesSimuladas($limit);
-        }
-    }
-
-    // Atividades simuladas quando não há logs
-    private function getAtividadesSimuladas($limit)
-    {
-        try {
-            $sql = "SELECT nome, estoque_atual, DATE_SUB(NOW(), INTERVAL FLOOR(RAND() * 168) HOUR) as data_simulada
-                    FROM produtos WHERE ativo = 1 ORDER BY RAND() LIMIT :limit";
-
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-            $stmt->execute();
-
-            $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $atividades = [];
-
-            $tipos = ['entrada', 'saida', 'ajuste'];
-            $acoes = [
-                'entrada' => 'Entrada de estoque',
-                'saida' => 'Saída de estoque',
-                'ajuste' => 'Ajuste de estoque'
-            ];
-
-            foreach ($produtos as $produto) {
-                $tipo = $tipos[array_rand($tipos)];
-                $quantidade = rand(1, 20);
-
-                $atividades[] = [
-                    'tipo' => $tipo,
-                    'quantidade' => $quantidade,
-                    'data_movimentacao' => $produto['data_simulada'],
-                    'produto_nome' => $produto['nome'],
-                    'usuario_nome' => $_SESSION['usuario_nome'],
-                    'observacao' => $acoes[$tipo]
-                ];
-            }
-
-            return $atividades;
-        } catch (PDOException $e) {
             return [];
         }
     }
 
-    // Dados para gráfico de movimentações
+    // Dados para gráfico de movimentações reais
     public function getDadosGrafico($dias = 7)
     {
         try {
@@ -186,10 +137,23 @@ class DashboardData
                 $data = date('Y-m-d', strtotime("-$i days"));
                 $labels[] = date('d/m', strtotime($data));
 
-                // Simula dados para o gráfico
-                // Em um sistema real, você buscaria das tabelas de movimentação
-                $entradas[] = rand(5, 25);
-                $saidas[] = rand(3, 20);
+                // Entradas do dia
+                $stmt = $this->pdo->prepare("
+                    SELECT COALESCE(SUM(quantidade), 0) 
+                    FROM movimentacoes_estoque 
+                    WHERE DATE(criado_em) = ? AND tipo_movimentacao = 'entrada'
+                ");
+                $stmt->execute([$data]);
+                $entradas[] = (int)$stmt->fetchColumn();
+
+                // Saídas do dia
+                $stmt = $this->pdo->prepare("
+                    SELECT COALESCE(SUM(quantidade), 0) 
+                    FROM movimentacoes_estoque 
+                    WHERE DATE(criado_em) = ? AND tipo_movimentacao = 'saida'
+                ");
+                $stmt->execute([$data]);
+                $saidas[] = (int)$stmt->fetchColumn();
             }
 
             return [
@@ -200,10 +164,38 @@ class DashboardData
         } catch (Exception $e) {
             // Dados padrão em caso de erro
             return [
-                'labels' => ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
-                'entradas' => [12, 19, 8, 15, 25, 13, 18],
-                'saidas' => [8, 11, 13, 9, 16, 12, 14]
+                'labels' => array_map(function($i) { return date('d/m', strtotime("-$i days")); }, range($dias-1, 0)),
+                'entradas' => array_fill(0, $dias, 0),
+                'saidas' => array_fill(0, $dias, 0)
             ];
+        }
+    }
+
+    // Produtos mais movimentados
+    public function getProdutosMaisMovimentados($limit = 5)
+    {
+        try {
+            $sql = "SELECT 
+                        p.nome,
+                        p.codigo,
+                        p.estoque_atual,
+                        COUNT(m.id) as total_movimentacoes,
+                        SUM(CASE WHEN m.tipo_movimentacao = 'entrada' THEN m.quantidade ELSE 0 END) as total_entradas,
+                        SUM(CASE WHEN m.tipo_movimentacao = 'saida' THEN m.quantidade ELSE 0 END) as total_saidas
+                    FROM produtos p
+                    LEFT JOIN movimentacoes_estoque m ON p.id_produto = m.produto_id
+                    WHERE p.ativo = 1 AND m.criado_em >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                    GROUP BY p.id_produto, p.nome, p.codigo, p.estoque_atual
+                    ORDER BY total_movimentacoes DESC
+                    LIMIT :limit";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return [];
         }
     }
 }
@@ -218,6 +210,7 @@ $stats = $dashboard->getEstasticasGerais();
 $produtos_estoque_baixo = $dashboard->getProdutosEstoqueBaixo();
 $atividades_recentes = $dashboard->getAtividadesRecentes();
 $dados_grafico = $dashboard->getDadosGrafico();
+$produtos_movimentados = $dashboard->getProdutosMaisMovimentados();
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -343,7 +336,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
         }
 
         .header-left {
-            flex-shrink: 0;
+            flex: 1;
         }
 
         .header-left h1 {
@@ -358,70 +351,12 @@ $dados_grafico = $dashboard->getDadosGrafico();
             font-size: 0.875rem;
         }
 
-        /* Search Bar - mantendo o código original */
-        .search-container {
-            flex: 1;
-            max-width: 500px;
-            position: relative;
-        }
-
-        .search-wrapper {
-            position: relative;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 12px 16px 12px 48px;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            font-size: 0.875rem;
-            background: #f8fafc;
-            transition: all 0.2s ease;
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #64748b;
-            font-size: 1rem;
-        }
-
-        .search-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            max-height: 400px;
-            overflow-y: auto;
-            display: none;
-            margin-top: 4px;
-        }
-
-        .search-results.show {
-            display: block;
-        }
-
         .header-right {
             display: flex;
             align-items: center;
             gap: 16px;
             flex-shrink: 0;
         }
-
 
         .user-info {
             display: flex;
@@ -436,7 +371,6 @@ $dados_grafico = $dashboard->getDadosGrafico();
 
         .user-info:hover {
             background: rgba(0, 0, 0, 0.1);
-            /* fundo leve */
             cursor: pointer;
             transform: scale(1.02);
         }
@@ -452,9 +386,6 @@ $dados_grafico = $dashboard->getDadosGrafico();
             color: white;
             font-weight: 600;
         }
-
-
-        
 
         .user-details h3 {
             font-size: 0.875rem;
@@ -569,6 +500,10 @@ $dados_grafico = $dashboard->getDadosGrafico();
             color: #dc2626;
         }
 
+        .stat-change.warning {
+            color: #d97706;
+        }
+
         /* Chart Section */
         .chart-section {
             background: white;
@@ -674,6 +609,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
         .activity-value {
             font-weight: 600;
             color: #1e293b;
+            text-align: right;
         }
 
         /* Estoque Baixo Alert */
@@ -720,7 +656,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
             padding: 12px;
             margin-bottom: 8px;
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
         }
 
@@ -738,7 +674,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
             margin-bottom: 2px;
         }
 
-        .produto-fornecedor {
+        .produto-codigo {
             font-size: 0.75rem;
             color: #64748b;
         }
@@ -784,6 +720,54 @@ $dados_grafico = $dashboard->getDadosGrafico();
             color: #9333ea;
         }
 
+        .orange {
+            background: #fed7aa;
+            color: #ea580c;
+        }
+
+        /* Produtos Movimentados */
+        .produto-movimentado {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .produto-movimentado:last-child {
+            border-bottom: none;
+        }
+
+        .produto-movimentado-info {
+            flex: 1;
+        }
+
+        .produto-movimentado-nome {
+            font-weight: 500;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+
+        .produto-movimentado-codigo {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .produto-movimentado-stats {
+            text-align: right;
+            font-size: 0.875rem;
+        }
+
+        .movimento-count {
+            font-weight: 600;
+            color: #3b82f6;
+        }
+
+        .movimento-detail {
+            color: #64748b;
+            font-size: 0.75rem;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .sidebar {
@@ -804,9 +788,8 @@ $dados_grafico = $dashboard->getDadosGrafico();
                 gap: 16px;
             }
 
-            .search-container {
-                order: -1;
-                max-width: none;
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             }
         }
 
@@ -819,6 +802,10 @@ $dados_grafico = $dashboard->getDadosGrafico();
                 flex-direction: column;
                 gap: 12px;
                 width: 100%;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -939,16 +926,6 @@ $dados_grafico = $dashboard->getDadosGrafico();
                     <p class="header-subtitle">Visão geral do sistema de estoque - Atualizado em <?= date('d/m/Y H:i') ?></p>
                 </div>
 
-                <!-- Search Bar (mantendo funcionalidade original) -->
-                <div class="search-container">
-                    <div class="search-wrapper">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="searchInput" class="search-input"
-                            placeholder="Pesquisar produtos, fornecedores, usuários...">
-                        <div id="searchResults" class="search-results"></div>
-                    </div>
-                </div>
-
                 <div class="header-right">
                     <a href="perfil.php" class="user-info">
                         <div class="user-avatar">
@@ -986,8 +963,8 @@ $dados_grafico = $dashboard->getDadosGrafico();
                         <div class="estoque-baixo-item">
                             <div class="produto-info">
                                 <div class="produto-nome"><?= htmlspecialchars($produto['nome']) ?></div>
-                                <div class="produto-fornecedor">
-                                    Fornecedor: <?= htmlspecialchars($produto['fornecedor_nome'] ?: 'Não informado') ?>
+                                <div class="produto-codigo">
+                                    Código: <?= htmlspecialchars($produto['codigo']) ?>
                                 </div>
                             </div>
                             <div class="estoque-info">
@@ -1014,12 +991,12 @@ $dados_grafico = $dashboard->getDadosGrafico();
                                     <div class="stat-title">Total de Produtos</div>
                                     <div class="stat-value"><?= number_format($stats['total_produtos'], 0, ',', '.') ?></div>
                                     <div class="stat-change positive">
-                                        <i class="fas fa-arrow-up"></i>
+                                        <i class="fas fa-boxes"></i>
                                         <span>Produtos ativos</span>
                                     </div>
                                 </div>
                                 <div class="stat-icon blue">
-                                    <i class="fas fa-boxes"></i>
+                                    <i class="fas fa-cubes"></i>
                                 </div>
                             </div>
                         </div>
@@ -1037,7 +1014,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
                                     </div>
                                 </div>
                                 <div class="stat-icon <?= $stats['estoque_baixo'] > 0 ? 'red' : 'green' ?>">
-                                    <i class="fas fa-chart-line"></i>
+                                    <i class="fas fa-chart-line-down"></i>
                                 </div>
                             </div>
                         </div>
@@ -1070,6 +1047,22 @@ $dados_grafico = $dashboard->getDadosGrafico();
                                 </div>
                                 <div class="stat-icon yellow">
                                     <i class="fas fa-handshake"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <div>
+                                    <div class="stat-title">Movimentações (Mês)</div>
+                                    <div class="stat-value"><?= number_format($stats['movimentacoes_mes'], 0, ',', '.') ?></div>
+                                    <div class="stat-change positive">
+                                        <i class="fas fa-exchange-alt"></i>
+                                        <span>Este mês</span>
+                                    </div>
+                                </div>
+                                <div class="stat-icon orange">
+                                    <i class="fas fa-arrows-rotate"></i>
                                 </div>
                             </div>
                         </div>
@@ -1125,8 +1118,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
                                     'entrada' => ['fas fa-arrow-up', 'green', '+'],
                                     'saida' => ['fas fa-arrow-down', 'red', '-'],
                                     'ajuste' => ['fas fa-edit', 'yellow', '±'],
-                                    'cadastro' => ['fas fa-plus', 'blue', '+'],
-                                    'edicao' => ['fas fa-edit', 'yellow', '']
+                                    'transferencia' => ['fas fa-exchange-alt', 'blue', '↔']
                                 ];
 
                                 $config = $icone_config[$tipo] ?? ['fas fa-history', 'blue', ''];
@@ -1140,13 +1132,18 @@ $dados_grafico = $dashboard->getDadosGrafico();
                                     </div>
                                     <div class="activity-content">
                                         <div class="activity-title">
-                                            <?= htmlspecialchars($atividade['observacao'] ?? ucfirst($tipo) . ' de estoque') ?>
+                                            <?= ucfirst($tipo) ?> - <?= htmlspecialchars($atividade['produto_nome'] ?? 'Produto não identificado') ?>
                                         </div>
                                         <div class="activity-meta">
-                                            <?= htmlspecialchars($atividade['produto_nome'] ?? '') ?> •
                                             <?= $data_formatada ?>
                                             <?php if (isset($atividade['usuario_nome'])): ?>
                                                 • <?= htmlspecialchars($atividade['usuario_nome']) ?>
+                                            <?php endif; ?>
+                                            <?php if (isset($atividade['motivo']) && $atividade['motivo']): ?>
+                                                • <?= htmlspecialchars($atividade['motivo']) ?>
+                                            <?php endif; ?>
+                                            <?php if (isset($atividade['destino']) && $atividade['destino']): ?>
+                                                • Para: <?= htmlspecialchars($atividade['destino']) ?>
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -1170,6 +1167,84 @@ $dados_grafico = $dashboard->getDadosGrafico();
                         <?php endif; ?>
                     </div>
 
+                    <div class="activity-card">
+                        <h3 class="section-title">
+                            <i class="fas fa-fire"></i>
+                            Produtos Mais Movimentados
+                        </h3>
+
+                        <?php if (!empty($produtos_movimentados)): ?>
+                            <?php foreach ($produtos_movimentados as $produto): ?>
+                                <div class="produto-movimentado">
+                                    <div class="produto-movimentado-info">
+                                        <div class="produto-movimentado-nome"><?= htmlspecialchars($produto['nome']) ?></div>
+                                        <div class="produto-movimentado-codigo">
+                                            <?= htmlspecialchars($produto['codigo']) ?> • Estoque: <?= $produto['estoque_atual'] ?> unid.
+                                        </div>
+                                    </div>
+                                    <div class="produto-movimentado-stats">
+                                        <div class="movimento-count"><?= $produto['total_movimentacoes'] ?> mov.</div>
+                                        <div class="movimento-detail">
+                                            ↑<?= $produto['total_entradas'] ?: 0 ?> ↓<?= $produto['total_saidas'] ?: 0 ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="activity-item">
+                                <div class="activity-avatar yellow">
+                                    <i class="fas fa-chart-bar"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">Sem dados de movimentação</div>
+                                    <div class="activity-meta">Últimos 30 dias</div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php else: ?>
+                <!-- Seção para usuários sem permissão de visualizar produtos -->
+                <div class="stats-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Bem-vindo ao Sistema
+                    </h2>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <div>
+                                    <div class="stat-title">Seu Perfil</div>
+                                    <div class="stat-value"><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></div>
+                                    <div class="stat-change positive">
+                                        <i class="fas fa-user"></i>
+                                        <span>Perfil ativo</span>
+                                    </div>
+                                </div>
+                                <div class="stat-icon blue">
+                                    <i class="fas fa-id-card"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <div>
+                                    <div class="stat-title">Sistema</div>
+                                    <div class="stat-value">Online</div>
+                                    <div class="stat-change positive">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Funcionando</span>
+                                    </div>
+                                </div>
+                                <div class="stat-icon green">
+                                    <i class="fas fa-server"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="activity-card">
                         <h3 class="section-title">
                             <i class="fas fa-info-circle"></i>
@@ -1207,8 +1282,8 @@ $dados_grafico = $dashboard->getDadosGrafico();
                                     <i class="fas fa-times"></i>
                                 </div>
                                 <div class="activity-content">
-                                    <div class="activity-title">Nenhuma permissão</div>
-                                    <div class="activity-meta">Entre em contato com o administrador</div>
+                                    <div class="activity-title">Nenhuma permissão específica</div>
+                                    <div class="activity-meta">Entre em contato com o administrador para mais acesso</div>
                                 </div>
                             </div>
                         <?php endif; ?>
@@ -1222,143 +1297,8 @@ $dados_grafico = $dashboard->getDadosGrafico();
         // Dados do gráfico vindos do PHP
         const dadosGrafico = <?= json_encode($dados_grafico) ?>;
 
-        // Search functionality (mantendo a funcionalidade original)
-        let searchTimeout;
-        const searchInput = document.getElementById('searchInput');
-        const searchResults = document.getElementById('searchResults');
-
-        searchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            clearTimeout(searchTimeout);
-
-            if (query.length < 2) {
-                hideSearchResults();
-                return;
-            }
-
-            showLoading();
-            searchTimeout = setTimeout(() => {
-                performSearch(query);
-            }, 300);
-        });
-
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.search-container')) {
-                hideSearchResults();
-            }
-        });
-
-        function performSearch(query) {
-            fetch(`class/class_search.php?q=${encodeURIComponent(query)}&from=dashboard`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        return response.text().then(text => {
-                            console.error('Resposta não é JSON:', text);
-                            throw new Error('Resposta inválida do servidor');
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    hideLoading();
-                    if (data.error) {
-                        showError(data.error);
-                        return;
-                    }
-                    displayResults(data.results || []);
-                })
-                .catch(error => {
-                    console.error('Erro na pesquisa:', error);
-                    hideLoading();
-                    showError('Erro ao realizar pesquisa: ' + error.message);
-                });
-        }
-
-        function displayResults(results) {
-            if (results.length === 0) {
-                searchResults.innerHTML = '<div class="search-no-results">Nenhum resultado encontrado</div>';
-                showSearchResults();
-                return;
-            }
-
-            const html = results.map(result => {
-                const badgeHtml = result.badge ?
-                    `<span class="search-result-badge ${result.badgeClass || ''}">${result.badge}</span>` : '';
-
-                return `
-                    <div class="search-result-item" data-url="${result.url || '#'}" data-type="${result.type}">
-                        <div class="search-result-icon ${getIconClass(result.type)}">
-                            <i class="${result.icon}"></i>
-                        </div>
-                        <div class="search-result-content">
-                            <div class="search-result-title">
-                                ${result.title}
-                                ${badgeHtml}
-                            </div>
-                            ${result.subtitle ? `<div class="search-result-subtitle">${result.subtitle}</div>` : ''}
-                            ${result.description ? `<div class="search-result-description">${result.description}</div>` : ''}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            searchResults.innerHTML = html;
-            searchResults.querySelectorAll('.search-result-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    const url = this.getAttribute('data-url');
-                    if (url && url !== '#') {
-                        window.location.href = url;
-                    }
-                });
-            });
-            showSearchResults();
-        }
-
-        function getIconClass(type) {
-            const classes = {
-                'produto': 'blue',
-                'fornecedor': 'green',
-                'usuario': 'purple',
-                'secao': 'yellow'
-            };
-            return classes[type] || 'blue';
-        }
-
-        function showSearchResults() {
-            searchResults.classList.add('show');
-        }
-
-        function hideSearchResults() {
-            searchResults.classList.remove('show');
-        }
-
-        function showLoading() {
-            searchResults.innerHTML = `
-                <div class="search-loading">
-                    <div class="spinner"></div>
-                    Pesquisando...
-                </div>
-            `;
-            showSearchResults();
-        }
-
-        function hideLoading() {
-            const loading = searchResults.querySelector('.search-loading');
-            if (loading) {
-                loading.remove();
-            }
-        }
-
-        function showError(message) {
-            searchResults.innerHTML = `<div class="search-no-results" style="color: #dc2626;">${message}</div>`;
-            showSearchResults();
-        }
-
-        // Chart.js configuration
+        // Inicializar gráfico apenas se houver permissão
+        <?php if (temPermissao('listar_produtos')): ?>
         let stockChart;
         const ctx = document.getElementById('stockChart');
         if (ctx) {
@@ -1372,14 +1312,22 @@ $dados_grafico = $dashboard->getDadosGrafico();
                         borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         tension: 0.4,
-                        fill: true
+                        fill: true,
+                        pointBackgroundColor: '#3b82f6',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
                     }, {
                         label: 'Saídas',
                         data: dadosGrafico.saidas,
                         borderColor: '#ef4444',
                         backgroundColor: 'rgba(239, 68, 68, 0.1)',
                         tension: 0.4,
-                        fill: true
+                        fill: true,
+                        pointBackgroundColor: '#ef4444',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
                     }]
                 },
                 options: {
@@ -1388,20 +1336,51 @@ $dados_grafico = $dashboard->getDadosGrafico();
                     plugins: {
                         legend: {
                             position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            displayColors: false
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
                             grid: {
-                                color: '#f1f5f9'
+                                color: '#f1f5f9',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: {
+                                    size: 12
+                                }
                             }
                         },
                         x: {
                             grid: {
-                                color: '#f1f5f9'
+                                color: '#f1f5f9',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#64748b',
+                                font: {
+                                    size: 12
+                                }
                             }
                         }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
                     }
                 }
             });
@@ -1420,7 +1399,20 @@ $dados_grafico = $dashboard->getDadosGrafico();
 
         // Função para atualizar gráfico
         function atualizarGrafico(dias) {
-            // Fazer requisição AJAX para buscar novos dados
+            // Adicionar indicador de loading
+            const chartContainer = document.querySelector('.chart-container');
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.innerHTML = '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #64748b;"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
+            loadingIndicator.style.position = 'absolute';
+            loadingIndicator.style.top = '0';
+            loadingIndicator.style.left = '0';
+            loadingIndicator.style.right = '0';
+            loadingIndicator.style.bottom = '0';
+            loadingIndicator.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+            loadingIndicator.style.zIndex = '10';
+            chartContainer.appendChild(loadingIndicator);
+
+            // Fazer requisição para buscar novos dados
             fetch(`ajax/get_chart_data.php?dias=${dias}`)
                 .then(response => response.json())
                 .then(data => {
@@ -1428,7 +1420,7 @@ $dados_grafico = $dashboard->getDadosGrafico();
                         stockChart.data.labels = data.labels;
                         stockChart.data.datasets[0].data = data.entradas;
                         stockChart.data.datasets[1].data = data.saidas;
-                        stockChart.update();
+                        stockChart.update('active');
 
                         // Atualizar título do gráfico
                         const titulo = document.querySelector('.chart-title');
@@ -1439,11 +1431,19 @@ $dados_grafico = $dashboard->getDadosGrafico();
                         };
                         titulo.textContent = `Movimentação de Estoque - ${textos[dias] || 'Período selecionado'}`;
                     }
+                    
+                    // Remover loading
+                    chartContainer.removeChild(loadingIndicator);
                 })
                 .catch(error => {
                     console.error('Erro ao atualizar gráfico:', error);
+                    // Remover loading mesmo em caso de erro
+                    if (chartContainer.contains(loadingIndicator)) {
+                        chartContainer.removeChild(loadingIndicator);
+                    }
                 });
         }
+        <?php endif; ?>
 
         // Auto refresh das estatísticas a cada 5 minutos
         setInterval(function() {
@@ -1452,23 +1452,52 @@ $dados_grafico = $dashboard->getDadosGrafico();
 
         // Adicionar funcionalidade de notificação para estoque baixo
         <?php if (!empty($produtos_estoque_baixo)): ?>
-            // Mostrar notificação se houver produtos com estoque baixo
-            if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('Atenção: Produtos com Estoque Baixo', {
-                    body: '<?= count($produtos_estoque_baixo) ?> produto(s) precisam de reposição',
-                    icon: '/favicon.ico'
-                });
-            } else if ('Notification' in window && Notification.permission !== 'denied') {
-                Notification.requestPermission().then(function(permission) {
-                    if (permission === 'granted') {
-                        new Notification('Atenção: Produtos com Estoque Baixo', {
-                            body: '<?= count($produtos_estoque_baixo) ?> produto(s) precisam de reposição',
-                            icon: '/favicon.ico'
-                        });
-                    }
-                });
-            }
+        // Mostrar notificação se houver produtos com estoque baixo
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Atenção: Produtos com Estoque Baixo', {
+                body: '<?= count($produtos_estoque_baixo) ?> produto(s) precisam de reposição',
+                icon: '/favicon.ico',
+                tag: 'estoque-baixo'
+            });
+        } else if ('Notification' in window && Notification.permission !== 'denied') {
+            Notification.requestPermission().then(function(permission) {
+                if (permission === 'granted') {
+                    new Notification('Atenção: Produtos com Estoque Baixo', {
+                        body: '<?= count($produtos_estoque_baixo) ?> produto(s) precisam de reposição',
+                        icon: '/favicon.ico',
+                        tag: 'estoque-baixo'
+                    });
+                }
+            });
+        }
         <?php endif; ?>
+
+        // Animações suaves para cards ao carregar
+        window.addEventListener('load', function() {
+            const cards = document.querySelectorAll('.stat-card, .activity-card, .chart-section');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+
+        // Atualizar timestamp do header a cada minuto
+        setInterval(function() {
+            const now = new Date();
+            const timestamp = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const subtitle = document.querySelector('.header-subtitle');
+            if (subtitle) {
+                subtitle.textContent = `Visão geral do sistema de estoque - Atualizado em ${timestamp}`;
+            }
+        }, 60000); // 1 minuto
     </script>
 </body>
 

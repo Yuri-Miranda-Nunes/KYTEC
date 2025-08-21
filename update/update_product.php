@@ -101,10 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $produto) {
             $ativo,
             $produto_id
         ]);
-
+        
         $mensagem = "Produto atualizado com sucesso!";
         $tipo_mensagem = "success";
-        header("Location: ../read/read_product.php");
+        header("Location: ../read/focus_product.php?id=" . $produto_id);
         exit;
 
 
@@ -868,7 +868,7 @@ function isActivePage($page)
 
                         <!-- Form Actions -->
                         <div class="form-actions">
-                            <a href="../read/read_product.php" class="btn btn-secondary">
+                            <a href="../read/focus_product.php?id=<?= $produto['id_produto'] ?>" class="btn btn-secondary">
                                 <i class="fas fa-times"></i>
                                 Cancelar
                             </a>

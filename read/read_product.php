@@ -1,12 +1,6 @@
 <?php
 session_start();
 
-$mensagemSucesso = '';
-if (isset($_SESSION['mensagem_sucesso'])) {
-    $mensagemSucesso = $_SESSION['mensagem_sucesso'];
-    unset($_SESSION['mensagem_sucesso']); // exibe uma vez só
-}
-
 if (!in_array('listar_produtos', $_SESSION['permissoes'])) {
     echo "Acesso negado.";
     exit;

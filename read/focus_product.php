@@ -76,33 +76,7 @@ function getEstoqueBadgeClass($estoqueAtual, $estoqueMinimo)
     }
     return 'stock-normal';
 }
-
-if (!empty($_SESSION['mensagem_sucesso'])): ?>
-    <div class="alert alert-success" style="padding: 10px;
-background-color: #d4edda; /* Verde claro para sucesso */
-color: #155724; /* Verde escuro para texto */
-border-radius: 5px;
-margin-bottom: 15px;
-border: 1px solid #c3e6cb;
-font-weight: 600;">
-        <?= $_SESSION['mensagem_sucesso'];
-        unset($_SESSION['mensagem_sucesso']); ?>
-    </div>
-<?php endif; ?>
-
-<?php if (!empty($_SESSION['mensagem_erro'])): ?>
-    <div class="alert alert-danger" style="padding: 10px;
-background-color: #f8d7da; /* Vermelho claro */
-color: #721c24; /* Vermelho escuro */
-border-radius: 5px;
-margin-bottom: 15px;
-border: 1px solid #f5c6cb;
-font-weight: 600;">
-        <?= $_SESSION['mensagem_erro'];
-        unset($_SESSION['mensagem_erro']); ?>
-    </div>
-
-<?php endif; ?>
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
