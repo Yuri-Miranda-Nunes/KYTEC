@@ -64,6 +64,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Matrícula deve ser um número válido.");
         }
 
+        if (strlen($matricula) < 4) {
+            throw new Exception("A matrícula deve ter no minimo 4 caracteres."); 
+        }
+
+        if (strlen($matricula) > 4) {
+            throw new Exception("A matrícula deve ter no maximo 4 caracteres."); 
+        }
+
         if (empty($nome)) {
             throw new Exception("Nome do usuário é obrigatório.");
         }
@@ -80,8 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Senha é obrigatória.");
         }
 
-        if (strlen($senha) < 6) {
-            throw new Exception("A senha deve ter pelo menos 6 caracteres.");
+        if (strlen($senha) < 8) {
+            throw new Exception("A senha deve ter pelo menos 8 caracteres.");
         }
 
         if ($senha !== $confirmar_senha) {
@@ -786,8 +794,8 @@ function isActivePage($page)
                                 class="form-input"
                                 value="<?= htmlspecialchars($_POST['matricula'] ?? '') ?>"
                                 required
-                                min="1"
-                                placeholder="Ex: 123456">
+                                min="4"
+                                placeholder="Ex: 1234">
                             <div class="input-hint">Número único de identificação do funcionário</div>
                         </div>
 
@@ -907,9 +915,9 @@ function isActivePage($page)
                                 name="senha"
                                 class="form-input"
                                 required
-                                minlength="6"
-                                placeholder="Mínimo 6 caracteres">
-                            <div class="input-hint">Senha deve ter pelo menos 6 caracteres</div>
+                                minlength="8"
+                                placeholder="Mínimo 8 caracteres">
+                            <div class="input-hint">Senha deve ter pelo menos 8 caracteres</div>
                         </div>
 
                         <!-- Confirmar Senha -->
@@ -922,7 +930,7 @@ function isActivePage($page)
                                 name="confirmar_senha"
                                 class="form-input"
                                 required
-                                minlength="6"
+                                minlength="8"
                                 placeholder="Digite a senha novamente">
                             <div class="input-hint">Repita a senha para confirmação</div>
                         </div>
