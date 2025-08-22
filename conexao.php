@@ -9,7 +9,7 @@ class BancoDeDados {
     public function __construct() {
         try {
             $this->pdo = new PDO(
-                "mysql:host={$this->host};port=49170;dbname={$this->dbname}",
+                "mysql:host={$this->host};dbname={$this->dbname}",
                 $this->usuario,
                 $this->senha,
                 array(PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8")
