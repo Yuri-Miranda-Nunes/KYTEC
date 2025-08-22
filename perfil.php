@@ -1348,16 +1348,7 @@ $perfilExibicao = $perfis_traducao[$dadosUsuario['perfil']] ?? ucfirst($dadosUsu
                                 </button>
                             </div>
 
-                            <div class="security-item">
-                                <div class="security-info">
-                                    <h4>Histórico de Login</h4>
-                                    <p>Último acesso: <?= !empty($sessoesAtivas) ? date('d/m/Y H:i', strtotime($sessoesAtivas[0]['criado_em'])) : 'hoje às 08:30' ?></p>
-                                </div>
-                                <button class="btn btn-secondary" onclick="viewLoginHistory()">
-                                    <i class="fas fa-history"></i>
-                                    Ver Histórico
-                                </button>
-                            </div>
+                            
 
                             <div class="security-item">
                                 <div class="security-info">

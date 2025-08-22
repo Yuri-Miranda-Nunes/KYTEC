@@ -1,122 +1,137 @@
 <?php
-// ajax/get_chart_data.php
 session_start();
+header('Content-Type: application/json; charset=utf-8');
 
-// Verificar se está logado
+// Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
     http_response_code(401);
     echo json_encode(['error' => 'Não autorizado']);
     exit;
 }
 
-require_once '../conexao.php';
 require_once '../includes/functions.php';
+require_once '../conexao.php';
 
-// Verificar permissão
+// Verifica permissões
 if (!temPermissao('listar_produtos')) {
     http_response_code(403);
     echo json_encode(['error' => 'Sem permissão']);
     exit;
 }
 
-header('Content-Type: application/json');
-
 try {
-    $dias = intval($_GET['dias'] ?? 7);
+    $bd = new BancoDeDados();
+    $pdo = $bd->pdo;
     
-    // Limitar valores válidos
-    if (!in_array($dias, [7, 30, 90])) {
+    // Pega o número de dias (padrão 7)
+    $dias = isset($_GET['dias']) ? (int)$_GET['dias'] : 7;
+    
+    // Valida o número de dias
+    if ($dias < 1 || $dias > 365) {
         $dias = 7;
     }
-    
-    $bd = new BancoDeDados();
     
     $labels = [];
     $entradas = [];
     $saidas = [];
     
-    // Verificar se existe tabela de movimentações
-    $tables = $bd->pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-    
-    if (in_array('movimentacoes_estoque', $tables)) {
-        // Buscar dados reais da tabela de movimentações
-        for ($i = $dias - 1; $i >= 0; $i--) {
-            $data = date('Y-m-d', strtotime("-$i days"));
-            $labels[] = date($dias <= 7 ? 'd/m' : 'd/m', strtotime($data));
-            
-            // Entradas
-            $stmt = $bd->pdo->prepare("
-                SELECT COALESCE(SUM(quantidade), 0) as total 
-                FROM movimentacoes_estoque 
-                WHERE DATE(data_movimentacao) = ? AND tipo = 'entrada'
-            ");
-            $stmt->execute([$data]);
-            $entradas[] = intval($stmt->fetchColumn());
-            
-            // Saídas
-            $stmt = $bd->pdo->prepare("
-                SELECT COALESCE(SUM(quantidade), 0) as total 
-                FROM movimentacoes_estoque 
-                WHERE DATE(data_movimentacao) = ? AND tipo = 'saida'
-            ");
-            $stmt->execute([$data]);
-            $saidas[] = intval($stmt->fetchColumn());
+    for ($i = $dias - 1; $i >= 0; $i--) {
+        $data = date('Y-m-d', strtotime("-$i days"));
+        
+        // Formato da label baseado no período
+        if ($dias <= 7) {
+            $labels[] = date('d/m', strtotime($data));
+        } elseif ($dias <= 31) {
+            $labels[] = date('d/m', strtotime($data));
+        } else {
+            // Para períodos maiores, agrupa por semana
+            if ($i % 7 == 0) {
+                $labels[] = date('d/m', strtotime($data));
+            } else {
+                continue;
+            }
         }
-    } elseif (in_array('logs_produtos', $tables)) {
-        // Usar tabela de logs se disponível
-        for ($i = $dias - 1; $i >= 0; $i--) {
-            $data = date('Y-m-d', strtotime("-$i days"));
-            $labels[] = date($dias <= 7 ? 'd/m' : 'd/m', strtotime($data));
-            
-            // Entradas (assumindo que logs com quantidade aumentada são entradas)
-            $stmt = $bd->pdo->prepare("
-                SELECT COUNT(*) as total 
-                FROM logs_produtos 
-                WHERE DATE(data_log) = ? AND acao IN ('entrada', 'adicao', 'create')
-            ");
-            $stmt->execute([$data]);
-            $entradas[] = intval($stmt->fetchColumn());
-            
-            // Saídas
-            $stmt = $bd->pdo->prepare("
-                SELECT COUNT(*) as total 
-                FROM logs_produtos 
-                WHERE DATE(data_log) = ? AND acao IN ('saida', 'remocao', 'venda')
-            ");
-            $stmt->execute([$data]);
-            $saidas[] = intval($stmt->fetchColumn());
-        }
-    } else {
-        // Dados simulados baseados no período
-        for ($i = $dias - 1; $i >= 0; $i--) {
-            $data = date('Y-m-d', strtotime("-$i days"));
-            $labels[] = date($dias <= 7 ? 'd/m' : 'd/m', strtotime($data));
-            
-            // Simular com base no dia da semana e período
-            $dia_semana = date('N', strtotime($data)); // 1 = segunda, 7 = domingo
-            
-            // Mais movimento durante a semana
-            $multiplicador = ($dia_semana <= 5) ? 1.2 : 0.8;
-            
-            $base_entrada = ($dias <= 7) ? rand(5, 25) : rand(15, 50);
-            $base_saida = ($dias <= 7) ? rand(3, 20) : rand(10, 40);
-            
-            $entradas[] = intval($base_entrada * $multiplicador);
-            $saidas[] = intval($base_saida * $multiplicador);
-        }
+        
+        // Entradas do dia
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(quantidade), 0) 
+            FROM movimentacoes_estoque 
+            WHERE DATE(criado_em) = ? AND tipo_movimentacao = 'entrada'
+        ");
+        $stmt->execute([$data]);
+        $entradas[] = (int)$stmt->fetchColumn();
+        
+        // Saídas do dia
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(quantidade), 0) 
+            FROM movimentacoes_estoque 
+            WHERE DATE(criado_em) = ? AND tipo_movimentacao = 'saida'
+        ");
+        $stmt->execute([$data]);
+        $saidas[] = (int)$stmt->fetchColumn();
     }
     
+    // Para períodos maiores que 31 dias, agrupa por semanas
+    if ($dias > 31) {
+        $labels_agrupadas = [];
+        $entradas_agrupadas = [];
+        $saidas_agrupadas = [];
+        
+        $semanas = ceil($dias / 7);
+        for ($s = 0; $s < $semanas; $s++) {
+            $data_inicio = date('Y-m-d', strtotime("-" . (($s + 1) * 7) . " days"));
+            $data_fim = date('Y-m-d', strtotime("-" . ($s * 7) . " days"));
+            
+            $labels_agrupadas[] = date('d/m', strtotime($data_inicio)) . ' - ' . date('d/m', strtotime($data_fim));
+            
+            // Entradas da semana
+            $stmt = $pdo->prepare("
+                SELECT COALESCE(SUM(quantidade), 0) 
+                FROM movimentacoes_estoque 
+                WHERE DATE(criado_em) BETWEEN ? AND ? AND tipo_movimentacao = 'entrada'
+            ");
+            $stmt->execute([$data_inicio, $data_fim]);
+            $entradas_agrupadas[] = (int)$stmt->fetchColumn();
+            
+            // Saídas da semana
+            $stmt = $pdo->prepare("
+                SELECT COALESCE(SUM(quantidade), 0) 
+                FROM movimentacoes_estoque 
+                WHERE DATE(criado_em) BETWEEN ? AND ? AND tipo_movimentacao = 'saida'
+            ");
+            $stmt->execute([$data_inicio, $data_fim]);
+            $saidas_agrupadas[] = (int)$stmt->fetchColumn();
+        }
+        
+        // Inverte arrays para mostrar cronologicamente
+        $labels = array_reverse($labels_agrupadas);
+        $entradas = array_reverse($entradas_agrupadas);
+        $saidas = array_reverse($saidas_agrupadas);
+    }
+    
+    // Resposta JSON
     echo json_encode([
+        'success' => true,
         'labels' => $labels,
         'entradas' => $entradas,
         'saidas' => $saidas,
-        'periodo' => $dias
-    ]);
-    
+        'periodo' => $dias . ' dias',
+        'total_entradas' => array_sum($entradas),
+        'total_saidas' => array_sum($saidas),
+        'saldo' => array_sum($entradas) - array_sum($saidas)
+    ], JSON_UNESCAPED_UNICODE);
+
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo json_encode([
+        'error' => 'Erro no banco de dados',
+        'message' => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
-        'error' => 'Erro interno do servidor',
+        'error' => 'Erro interno',
         'message' => $e->getMessage()
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 }
+?>
