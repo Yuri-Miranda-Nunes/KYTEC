@@ -861,7 +861,11 @@ function isActivePage($page)
                 <div class="search-container">
                     <div class="search-wrapper">
                         <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar produtos, fornecedores, usuários...">
+                        <input type="text"
+                            id="searchInput"
+                            class="search-input"
+                            placeholder="Pesquisar produtos..."
+                            autocomplete="off">
                         <div id="searchResults" class="search-results"></div>
                     </div>
                 </div>
@@ -999,208 +1003,227 @@ function isActivePage($page)
     </div>
 
     <script>
-        // Search functionality
+        // Search functionality for local filtering
         let searchTimeout;
         const searchInput = document.getElementById('searchInput');
+        const tableRows = document.querySelectorAll('.products-table tbody tr');
         const searchResults = document.getElementById('searchResults');
 
         searchInput.addEventListener('input', function() {
-            const query = this.value.trim();
+            const query = this.value.toLowerCase().trim();
+
+            // Hide the search results dropdown since we're doing local filtering
+            hideSearchResults();
 
             clearTimeout(searchTimeout);
 
-            if (query.length < 2) {
-                hideSearchResults();
-                return;
-            }
-
-            // Show loading
-            showLoading();
-
             searchTimeout = setTimeout(() => {
-                performSearch(query);
+                filterProducts(query);
             }, 300);
         });
 
-        // Hide results when clicking outside
+        function filterProducts(query) {
+            let visibleCount = 0;
+
+            tableRows.forEach(row => {
+                // Get text content from all cells
+                const cells = row.querySelectorAll('td');
+                let rowText = '';
+
+                cells.forEach(cell => {
+                    // Skip the action buttons column (last column)
+                    if (cell !== cells[cells.length - 1]) {
+                        rowText += cell.textContent.toLowerCase() + ' ';
+                    }
+                });
+
+                const matches = rowText.includes(query) || query === '';
+
+                if (matches) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Update section title with count
+            updateProductCount(visibleCount);
+
+            // Show/hide empty state
+            toggleEmptyState(visibleCount === 0 && query !== '');
+        }
+
+        function updateProductCount(count) {
+            const sectionTitle = document.querySelector('.section-title');
+            const totalProducts = tableRows.length;
+
+            if (searchInput.value.trim()) {
+                sectionTitle.innerHTML = `
+            <i class="fas fa-boxes"></i>
+            Produtos Encontrados (${count} de ${totalProducts})
+        `;
+            } else {
+                sectionTitle.innerHTML = `
+            <i class="fas fa-boxes"></i>
+            Produtos Cadastrados (${totalProducts})
+        `;
+            }
+        }
+
+        function toggleEmptyState(show) {
+            let emptyState = document.getElementById('searchEmptyState');
+            const tableContainer = document.querySelector('.table-container');
+
+            if (show && !emptyState) {
+                emptyState = document.createElement('div');
+                emptyState.id = 'searchEmptyState';
+                emptyState.className = 'empty-state';
+                emptyState.innerHTML = `
+            <i class="fas fa-search"></i>
+            <h3>Nenhum produto encontrado</h3>
+            <p>Tente ajustar sua pesquisa ou limpe o campo de busca.</p>
+            <br>
+            <button onclick="clearSearch()" class="btn btn-primary">
+                <i class="fas fa-times"></i>
+                Limpar Busca
+            </button>
+        `;
+
+                // Insert after table container
+                tableContainer.parentNode.insertBefore(emptyState, tableContainer.nextSibling);
+                tableContainer.style.display = 'none';
+            } else if (!show && emptyState) {
+                emptyState.remove();
+                tableContainer.style.display = 'block';
+            } else if (show && emptyState) {
+                tableContainer.style.display = 'none';
+                emptyState.style.display = 'block';
+            } else if (!show && emptyState) {
+                tableContainer.style.display = 'block';
+                emptyState.style.display = 'none';
+            }
+        }
+
+        function clearSearch() {
+            searchInput.value = '';
+            filterProducts('');
+            searchInput.focus();
+        }
+
+        // Hide search results dropdown functions (keeping for compatibility)
+        function hideSearchResults() {
+            if (searchResults) {
+                searchResults.classList.remove('show');
+            }
+        }
+
+        // Hide results when clicking outside (modified to not interfere with local search)
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.search-container')) {
                 hideSearchResults();
             }
         });
 
-        // Handle keyboard navigation
+        // Enhanced keyboard navigation for search
         searchInput.addEventListener('keydown', function(e) {
-            const items = searchResults.querySelectorAll('.search-result-item');
-            const activeItem = searchResults.querySelector('.search-result-item.active');
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (!activeItem) {
-                    items[0]?.classList.add('active');
-                } else {
-                    activeItem.classList.remove('active');
-                    const nextItem = activeItem.nextElementSibling;
-                    if (nextItem && nextItem.classList.contains('search-result-item')) {
-                        nextItem.classList.add('active');
-                    } else {
-                        items[0]?.classList.add('active');
-                    }
-                }
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (!activeItem) {
-                    items[items.length - 1]?.classList.add('active');
-                } else {
-                    activeItem.classList.remove('active');
-                    const prevItem = activeItem.previousElementSibling;
-                    if (prevItem && prevItem.classList.contains('search-result-item')) {
-                        prevItem.classList.add('active');
-                    } else {
-                        items[items.length - 1]?.classList.add('active');
-                    }
-                }
+            if (e.key === 'Escape') {
+                clearSearch();
+                searchInput.blur();
             } else if (e.key === 'Enter') {
                 e.preventDefault();
-                const activeItem = searchResults.querySelector('.search-result-item.active');
-                if (activeItem) {
-                    activeItem.click();
+                // Focus on first visible row if any
+                const firstVisibleRow = document.querySelector('.products-table tbody tr[style=""], .products-table tbody tr:not([style*="none"])');
+                if (firstVisibleRow) {
+                    firstVisibleRow.click();
                 }
-            } else if (e.key === 'Escape') {
-                hideSearchResults();
-                searchInput.blur();
             }
         });
 
-        function performSearch(query) {
-            fetch(`../class/class_search.php?q=${encodeURIComponent(query)}&from=read`)
-                .then(response => {
-                    // Verificar se a resposta está ok
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
+        // Add search stats
+        function showSearchStats() {
+            const query = searchInput.value.trim();
+            if (!query) return;
 
-                    // Verificar o content-type
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        // Se não for JSON, ler como texto para debug
-                        return response.text().then(text => {
-                            console.error('Resposta não é JSON:', text);
-                            throw new Error('Resposta inválida do servidor');
-                        });
-                    }
+            const visibleRows = document.querySelectorAll('.products-table tbody tr:not([style*="none"])');
+            const totalRows = tableRows.length;
 
-                    return response.json();
-                })
-                .then(data => {
-                    hideLoading();
-
-                    // Verificar se há erro na resposta
-                    if (data.error) {
-                        showError(data.error);
-                        return;
-                    }
-
-                    displayResults(data.results || []);
-                })
-                .catch(error => {
-                    console.error('Erro na pesquisa:', error);
-                    hideLoading();
-                    showError('Erro ao realizar pesquisa: ' + error.message);
-                });
+            console.log(`Pesquisa: "${query}" - ${visibleRows.length} de ${totalRows} produtos encontrados`);
         }
 
-        function displayResults(results) {
-            if (results.length === 0) {
-                searchResults.innerHTML = '<div class="search-no-results">Nenhum resultado encontrado</div>';
-                showSearchResults();
+        // Highlight search terms in results (optional enhancement)
+        function highlightSearchTerms(query) {
+            if (!query) {
+                // Remove existing highlights
+                document.querySelectorAll('.search-highlight').forEach(el => {
+                    el.outerHTML = el.innerHTML;
+                });
                 return;
             }
 
-            const html = results.map(result => {
-                const badgeHtml = result.badge ?
-                    `<span class="search-result-badge ${result.badgeClass || ''}">${result.badge}</span>` : '';
+            const regex = new RegExp(`(${query})`, 'gi');
 
-                return `
-                    <div class="search-result-item" data-url="${result.url || '#'}" data-type="${result.type}">
-                        <div class="search-result-icon ${getIconClass(result.type)}">
-                            <i class="${result.icon}"></i>
-                        </div>
-                        <div class="search-result-content">
-                            <div class="search-result-title">
-                                ${result.title}
-                                ${badgeHtml}
-                            </div>
-                            ${result.subtitle ? `<div class="search-result-subtitle">${result.subtitle}</div>` : ''}
-                            ${result.description ? `<div class="search-result-description">${result.description}</div>` : ''}
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            tableRows.forEach(row => {
+                if (row.style.display !== 'none') {
+                    const cells = row.querySelectorAll('td:not(:last-child)'); // Exclude action column
+                    cells.forEach(cell => {
+                        // Skip if cell contains HTML elements we don't want to modify
+                        if (cell.querySelector('.product-code, .type-badge, .stock-badge, .status-badge, .price')) {
+                            return;
+                        }
 
-            searchResults.innerHTML = html;
-
-            // Add click events
-            searchResults.querySelectorAll('.search-result-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    const url = this.getAttribute('data-url');
-                    if (url && url !== '#') {
-                        window.location.href = url;
-                    }
-                });
-
-                // Add hover effect for keyboard navigation
-                item.addEventListener('mouseenter', function() {
-                    searchResults.querySelectorAll('.search-result-item').forEach(i => i.classList.remove('active'));
-                    this.classList.add('active');
-                });
-            });
-
-            showSearchResults();
-        }
-
-        function getIconClass(type) {
-            const classes = {
-                'produto': 'blue',
-                'fornecedor': 'green',
-                'usuario': 'purple',
-                'secao': 'yellow'
-            };
-            return classes[type] || 'blue';
-        }
-
-        function showSearchResults() {
-            searchResults.classList.add('show');
-        }
-
-        function hideSearchResults() {
-            searchResults.classList.remove('show');
-            searchResults.querySelectorAll('.search-result-item').forEach(item => {
-                item.classList.remove('active');
+                        const originalHTML = cell.innerHTML;
+                        const highlightedHTML = originalHTML.replace(regex, '<span class="search-highlight">$1</span>');
+                        cell.innerHTML = highlightedHTML;
+                    });
+                }
             });
         }
 
-        function showLoading() {
-            searchResults.innerHTML = `
-                <div class="search-loading">
-                    <div class="spinner"></div>
-                    Pesquisando...
-                </div>
-            `;
-            showSearchResults();
-        }
+        // Add CSS for search highlighting
+        const searchStyle = document.createElement('style');
+        searchStyle.textContent = `
+    .search-highlight {
+        background-color: #fef3c7;
+        color: #d97706;
+        padding: 1px 2px;
+        border-radius: 2px;
+        font-weight: 500;
+    }
+    
+    .search-stats {
+        background: #f0f9ff;
+        color: #0369a1;
+        padding: 8px 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 0.875rem;
+        display: none;
+    }
+    
+    .search-stats.show {
+        display: block;
+    }
+`;
+        document.head.appendChild(searchStyle);
 
-        function hideLoading() {
-            const loading = searchResults.querySelector('.search-loading');
-            if (loading) {
-                loading.remove();
-            }
-        }
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up initial state
+            updateProductCount(tableRows.length);
 
-        function showError(message) {
-            searchResults.innerHTML = `<div class="search-no-results" style="color: #dc2626;">${message}</div>`;
-            showSearchResults();
-        }
+            // Add placeholder text with product count
+            searchInput.placeholder = `Pesquisar entre ${tableRows.length} produtos...`;
+
+            // Focus enhancement
+            searchInput.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'scale(1.02)';
+            });
+
+            searchInput.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'scale(1)';
+            });
+        });
 
         // Adiciona feedback visual no clique das linhas da tabela
         document.querySelectorAll('.products-table tbody tr').forEach(row => {

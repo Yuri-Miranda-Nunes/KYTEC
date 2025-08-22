@@ -508,12 +508,7 @@ $motivosSaida = [
         </div>
 
         <!-- Alerts -->
-        <?php if (!empty($_SESSION['mensagem_sucesso'])): ?>
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i>
-                <?= $_SESSION['mensagem_sucesso']; unset($_SESSION['mensagem_sucesso']); ?>
-            </div>
-        <?php endif; ?>
+       
 
         <?php if (!empty($_SESSION['mensagem_erro'])): ?>
             <div class="alert alert-danger">

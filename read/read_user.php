@@ -1,12 +1,6 @@
 <?php
 session_start();
 
-$mensagemSucesso = '';
-if (isset($_SESSION['mensagem_sucesso'])) {
-  $mensagemSucesso = $_SESSION['mensagem_sucesso'];
-  unset($_SESSION['mensagem_sucesso']); // exibe uma vez só
-}
-
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
   header("Location: ../login.php");
@@ -89,41 +83,50 @@ function urlOrdenar($coluna)
   return '?' . http_build_query($query);
 }
 
-function formatarTelefone($telefone) {
+function formatarTelefone($telefone)
+{
   if (!$telefone) return 'Não informado';
   return $telefone;
 }
 
-function formatarData($data) {
+function formatarData($data)
+{
   if (!$data) return 'Não informado';
   return date('d/m/Y', strtotime($data));
 }
 
-function formatarDataHora($dataHora) {
+function formatarDataHora($dataHora)
+{
   if (!$dataHora) return 'Nunca';
   return date('d/m/Y H:i', strtotime($dataHora));
 }
 
-function formatarDepartamento($departamento) {
+function formatarDepartamento($departamento)
+{
   if (!$departamento) return 'Não informado';
   return ucfirst($departamento);
 }
 
-function getStatusBadge($ativo) {
+function getStatusBadge($ativo)
+{
   return $ativo ? 'status-ativo' : 'status-inativo';
 }
 
-function getPerfilBadge($perfil) {
-  switch($perfil) {
-    case 'admin': return 'perfil-admin';
-    case 'estoquista': return 'perfil-estoquista';
-    default: return 'perfil-visualizador';
+function getPerfilBadge($perfil)
+{
+  switch ($perfil) {
+    case 'admin':
+      return 'perfil-admin';
+    case 'estoquista':
+      return 'perfil-estoquista';
+    default:
+      return 'perfil-visualizador';
   }
 }
 
 // Criar array com dados dos usuários para JavaScript
 $usuariosJS = [];
-foreach($usuarios as $user) {
+foreach ($usuarios as $user) {
   $usuariosJS[$user['id']] = [
     'id' => $user['id'],
     'nome' => $user['nome'],
@@ -1093,7 +1096,12 @@ foreach($usuarios as $user) {
         <div class="search-container">
           <div class="search-wrapper">
             <i class="fas fa-search search-icon"></i>
-            <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar usuários...">
+            <input type="text"
+              id="searchInput"
+              class="search-input"
+              placeholder="Pesquisar usuários..."
+              autocomplete="off">
+
           </div>
         </div>
 
@@ -1267,10 +1275,10 @@ foreach($usuarios as $user) {
                         <a href="../update/update_user.php?id=<?= $u['id'] ?>" class="action-btn btn-edit" title="Editar">
                           <i class="fas fa-edit"></i>
                         </a>
-                        <a href="../delete/delete_user.php?id=<?= $u['id'] ?>" 
-                           class="action-btn btn-delete" 
-                           title="Excluir"
-                           onclick="return confirm('Tem certeza que deseja excluir este usuário?')">
+                        <a href="../delete/delete_user.php?id=<?= $u['id'] ?>"
+                          class="action-btn btn-delete"
+                          title="Excluir"
+                          onclick="return confirm('Tem certeza que deseja excluir este usuário?')">
                           <i class="fas fa-trash"></i>
                         </a>
                       </div>
@@ -1311,7 +1319,7 @@ foreach($usuarios as $user) {
           <i class="fas fa-times"></i>
         </button>
       </div>
-      
+
       <div class="modal-body">
         <!-- Informações Pessoais -->
         <div class="modal-section">
@@ -1420,9 +1428,9 @@ foreach($usuarios as $user) {
 
     searchInput.addEventListener('input', function() {
       const query = this.value.toLowerCase().trim();
-      
+
       clearTimeout(searchTimeout);
-      
+
       searchTimeout = setTimeout(() => {
         tableRows.forEach(row => {
           const text = row.textContent.toLowerCase();
@@ -1450,7 +1458,7 @@ foreach($usuarios as $user) {
       document.getElementById('modalTelefone').textContent = user.telefone || 'Não informado';
       document.getElementById('modalDepartamento').textContent = capitalizeFirst(user.departamento) || 'Não informado';
       document.getElementById('modalCargo').textContent = user.cargo || 'Não informado';
-      
+
       // Formatar data de admissão
       if (user.data_admissao) {
         const date = new Date(user.data_admissao + 'T00:00:00');
@@ -1485,7 +1493,7 @@ foreach($usuarios as $user) {
 
       // Atualizar estatísticas
       document.getElementById('modalTotalLogins').textContent = user.total_logins;
-      
+
       // Calcular dias ativo
       const createdDate = new Date(user.criado_em);
       const today = new Date();
@@ -1604,7 +1612,7 @@ foreach($usuarios as $user) {
         row.addEventListener('mouseenter', function() {
           this.style.transform = 'translateX(2px)';
         });
-        
+
         row.addEventListener('mouseleave', function() {
           this.style.transform = 'translateX(0)';
         });
@@ -1625,11 +1633,11 @@ foreach($usuarios as $user) {
           ripple.style.top = (e.offsetY - 10) + 'px';
           ripple.style.width = '20px';
           ripple.style.height = '20px';
-          
+
           this.style.position = 'relative';
           this.style.overflow = 'hidden';
           this.appendChild(ripple);
-          
+
           setTimeout(() => {
             ripple.remove();
           }, 600);
