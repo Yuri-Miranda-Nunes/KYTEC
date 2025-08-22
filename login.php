@@ -3,7 +3,7 @@ session_start();
 
 // Se já estiver logado, redireciona para dashboard
 if (!empty($_SESSION['logado']) && $_SESSION['logado'] === true) {
-    header('Location: dashboard.php');
+    header('Location: index.php');
     exit;
 }
 ?>
@@ -79,7 +79,7 @@ if (!empty($_SESSION['logado']) && $_SESSION['logado'] === true) {
       </div>
     <?php endif; ?>
 
-    <form action="verifica_login.php" method="post">
+    <form action="class/verifica_login.php" method="post">
       <input type="email" name="email" placeholder="E‑mail" required>
       <input type="password" name="senha" placeholder="Senha" required>
       <button type="submit">Entrar</button>
@@ -87,7 +87,7 @@ if (!empty($_SESSION['logado']) && $_SESSION['logado'] === true) {
     
     <!-- Link para debug (remova em produção) -->
     <div class="debug-link">
-      <a href="verifica_login.php?debug=1" onclick="return confirm('Modo debug ativado. Continuar?')">
+      <a href="class/verifica_login.php?debug=1" onclick="return confirm('Modo debug ativado. Continuar?')">
         Debug Mode
       </a>
     </div>

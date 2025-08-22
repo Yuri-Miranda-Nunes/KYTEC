@@ -1,10 +1,10 @@
 <?php
 session_start();
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 // Se não for POST, volta pro login
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit;
 }
 
@@ -17,13 +17,13 @@ try {
     // Validações básicas
     if (empty($email) || empty($senha)) {
         $_SESSION['erro'] = 'Email e senha são obrigatórios!';
-        header('Location: login.php');
+        header('Location: ../login.php');
         exit;
     }
     
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $_SESSION['erro'] = 'Email inválido!';
-        header('Location: login.php');
+        header('Location: ../login.php');
         exit;
     }
     
@@ -132,7 +132,7 @@ try {
         $_SESSION['permissoes'] = $permissoes_db;
         unset($_SESSION['erro']);
         
-        header('Location: index.php');
+        header('Location: ../index.php');
         exit;
     }
     
@@ -143,12 +143,12 @@ try {
         $_SESSION['erro'] = 'Senha incorreta!';
     }
     
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit;
     
 } catch (Exception $e) {
     $_SESSION['erro'] = 'Erro interno: ' . $e->getMessage();
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit;
 }
 ?>

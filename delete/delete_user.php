@@ -3,7 +3,7 @@ session_start();
 
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -13,11 +13,11 @@ if (!in_array('gerenciar_usuarios', $_SESSION['permissoes'])) {
     exit;
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 // Verifica se foi passado o ID do usuário
 if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: listar_usuarios.php?erro=id_invalido");
+    header("Location: ../read/read_user.php?erro=id_invalido");
     exit;
 }
 
@@ -26,7 +26,7 @@ $bd = new BancoDeDados();
 
 // Impedir que o usuário exclua a si mesmo
 if ($id_usuario === $_SESSION['usuario_id']) {
-    header("Location: listar_usuarios.php?erro=nao_pode_excluir_proprio_usuario");
+    header("Location: ../read/read_user.php?erro=nao_pode_excluir_proprio_usuario");
     exit;
 }
 
@@ -40,20 +40,11 @@ try {
     $usuario = $stmt_verificar->fetch(PDO::FETCH_ASSOC);
     
     if (!$usuario) {
-        header("Location: listar_usuarios.php?erro=usuario_nao_encontrado");
+        header("Location: ../read/read_user.php?erro=usuario_nao_encontrado");
         exit;
     }
     
-    // Verifica se o usuário tem a permissão de gerenciar usuários
-    $sql_permissoes = "SELECT COUNT(*) as total FROM usuario_permissoes up 
-                       INNER JOIN permissoes p ON up.permissao_id = p.id 
-                       WHERE up.usuario_id = :id AND p.nome_permissao = 'gerenciar_usuarios'";
-    $stmt_permissoes = $bd->pdo->prepare($sql_permissoes);
-    $stmt_permissoes->bindParam(':id', $id_usuario, PDO::PARAM_INT);
-    $stmt_permissoes->execute();
-    $permissoes = $stmt_permissoes->fetch(PDO::FETCH_ASSOC);
-    
-    $tem_gerenciar_usuarios = ($permissoes['total'] > 0);
+   
     
     // Se foi confirmada a exclusão
     if (isset($_POST['confirmar_exclusao']) && $_POST['confirmar_exclusao'] === 'sim') {
@@ -62,13 +53,13 @@ try {
         try {
             // Se tem permissão de gerenciar usuários, apenas desativa o usuário
             if ($tem_gerenciar_usuarios) {
-                $sql_desativar = "UPDATE usuarios SET ativo = 0 WHERE id = :id";
-                $stmt_desativar = $bd->pdo->prepare($sql_desativar);
-                $stmt_desativar->bindParam(':id', $id_usuario, PDO::PARAM_INT);
-                $stmt_desativar->execute();
+                $sql_excluir = "DELETE FROM usuarios WHERE id = :id";
+                $stmt_excluir = $bd->pdo->prepare($sql_excluir);
+                $stmt_excluir->bindParam(':id', $id_usuario, PDO::PARAM_INT);
+                $stmt_excluir->execute();
                 
                 $bd->pdo->commit();
-                header("Location: listar_usuarios.php?sucesso=usuario_desativado");
+                header("Location: ../read/read_user.php?sucesso=usuario_desativado");
                 exit;
             } else {
                 // Se não tem permissão de gerenciar usuários, exclui fisicamente
@@ -78,7 +69,7 @@ try {
                 $stmt_excluir->execute();
                 
                 $bd->pdo->commit();
-                header("Location: listar_usuarios.php?sucesso=usuario_excluido");
+                header("Location: ../read/read_user.php?sucesso=usuario_excluido");
                 exit;
             }
         } catch (Exception $e) {
@@ -399,26 +390,25 @@ try {
                     </div>
                 </div>
 
-                <?php if ($tem_gerenciar_usuarios): ?>
-                    <div class="warning-box">
+                <?php if ($id_usuario): ?>
+                    <div class="warning-box danger">
                         <p>
-                            <i class="fas fa-info-circle"></i>
-                            <strong>Este usuário possui permissão para gerenciar usuários.</strong><br>
-                            Por segurança, o usuário será apenas <strong>desativado</strong> em vez de excluído fisicamente. 
-                            Ele não conseguirá mais acessar o sistema, mas o histórico será preservado.
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Atenção:</strong> Esta ação é irreversível!<br>
+                            O usuário será excluído permanentemente do sistema, pois não possui a permissão de gerenciar usuários.
                         </p>
                     </div>
 
                     <form method="POST" action="">
                         <input type="hidden" name="confirmar_exclusao" value="sim">
                         <div class="buttons">
-                            <a href="listar_usuarios.php" class="btn btn-cancel">
+                            <a href="../read/read_user.php" class="btn btn-cancel">
                                 <i class="fas fa-times"></i>
                                 Cancelar
                             </a>
-                            <button type="submit" class="btn btn-warning">
-                                <i class="fas fa-user-slash"></i>
-                                Desativar Usuário
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i>
+                                Excluir Definitivamente
                             </button>
                         </div>
                     </form>

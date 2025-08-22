@@ -7,7 +7,7 @@ if (!in_array('listar_produtos', $_SESSION['permissoes'])) {
 }
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -17,7 +17,7 @@ function temPermissao($permissao)
     return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 $bd = new BancoDeDados();
 
 // Parâmetros de ordenação
@@ -64,9 +64,13 @@ function urlOrdenar($coluna)
     $query['direcao'] = $direcao;
     return '?' . http_build_query($query);
 }
+// Função para determinar se a página atual está ativa
+function isActivePage($page)
+{
+    $current = basename($_SERVER['PHP_SELF']);
+    return $current === $page ? 'active' : '';
+}
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -187,6 +191,11 @@ function urlOrdenar($coluna)
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 24px;
+        }
+
+        .header-left {
+            flex-shrink: 0;
         }
 
         .header-left h1 {
@@ -201,19 +210,192 @@ function urlOrdenar($coluna)
             font-size: 0.875rem;
         }
 
+        /* Search Bar Styles */
+        .search-container {
+            flex: 1;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px 12px 48px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 1rem;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .search-results.show {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .search-result-item:hover {
+            background: #f8fafc;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .search-result-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-result-title {
+            font-weight: 500;
+            color: #1e293b;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-result-subtitle {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+
+        .search-result-description {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .search-result-badge {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.625rem;
+            font-weight: 500;
+        }
+
+        .search-result-badge.badge-warning {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .search-result-badge.badge-danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .search-no-results {
+            padding: 24px;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        .search-loading {
+            padding: 16px;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         .header-right {
             display: flex;
             align-items: center;
             gap: 16px;
+            flex-shrink: 0;
         }
 
         .user-info {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 8px 16px;
-            background: #f1f5f9;
+            gap: 10px;
+            padding: 8px 12px;
             border-radius: 8px;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .user-info:hover {
+            background: rgba(0, 0, 0, 0.1);
+            /* fundo leve */
+            cursor: pointer;
+            transform: scale(1.02);
         }
 
         .user-avatar {
@@ -314,11 +496,14 @@ function urlOrdenar($coluna)
         }
 
         .products-table tbody tr {
-            transition: background-color 0.2s ease;
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
 
         .products-table tbody tr:hover {
             background: #f8fafc;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .products-table tbody tr:last-child td {
@@ -469,6 +654,32 @@ function urlOrdenar($coluna)
             color: #374151;
         }
 
+        /* Color Schemes for Search Results */
+        .blue {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .green {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .yellow {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .red {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .purple {
+            background: #f3e8ff;
+            color: #9333ea;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .sidebar {
@@ -478,6 +689,16 @@ function urlOrdenar($coluna)
 
             .main-content {
                 margin-left: 0;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .search-container {
+                order: -1;
+                max-width: none;
             }
         }
 
@@ -489,8 +710,9 @@ function urlOrdenar($coluna)
             }
 
             .header-right {
+                flex-direction: column;
+                gap: 12px;
                 width: 100%;
-                justify-content: center;
             }
 
             .products-table {
@@ -505,6 +727,17 @@ function urlOrdenar($coluna)
             .description-cell {
                 max-width: 120px;
             }
+        }
+
+        /* Success Message */
+        .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
@@ -521,7 +754,7 @@ function urlOrdenar($coluna)
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link">
+                        <a href="../index.php" class="nav-link <?= isActivePage('index.php') ?>">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -533,14 +766,15 @@ function urlOrdenar($coluna)
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="listar_produtos.php" class="nav-link">
+                            <a href="../read/read_product.php" class="nav-link <?= isActivePage('read_product.php') ?>">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="cadastrar_prod.php" class="nav-link">
+                                <a href="../create/create_product.php"
+                                    class="nav-link <?= isActivePage('create_product.php') ?>">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -550,28 +784,44 @@ function urlOrdenar($coluna)
                 <?php endif; ?>
 
                 <!-- Fornecedores -->
-                <div class="nav-section">
-                    <div class="nav-section-title">Fornecedores</div>
-                    <div class="nav-item">
-                        <a href="listar_fornecedores.php" class="nav-link active">
-                            <i class="fas fa-truck"></i>
-                            <span>Listar Fornecedores</span>
-                        </a>
+                <?php if (temPermissao('cadastrar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Fornecedores</div>
+                        <div class="nav-item">
+                            <a href="../read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
+                                <i class="fas fa-truck"></i>
+                                <span>Listar Fornecedores</span>
+                            </a>
+                        </div>
                     </div>
-                </div>
+                <?php endif; ?>
+
+                <!-- Logs -->
+                <?php if (temPermissao('cadastrar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Logs</div>
+                        <div class="nav-item">
+                            <a href="../log/product_input_and_output_log.php"
+                                class="nav-link <?= isActivePage('product_input_and_output_log.php') ?>">
+                                <i class="fas fa-history"></i>
+                                <span>Movimentações</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
 
                 <!-- Usuários -->
                 <?php if (temPermissao('gerenciar_usuarios')): ?>
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="listar_usuarios.php" class="nav-link">
+                            <a href="../read/read_user.php" class="nav-link <?= isActivePage('read_user.php') ?>">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link">
+                            <a href="../create/create_user.php" class="nav-link <?= isActivePage('create_user.php') ?>">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -583,13 +833,13 @@ function urlOrdenar($coluna)
                 <div class="nav-section">
                     <div class="nav-section-title">Sistema</div>
                     <div class="nav-item">
-                        <a href="perfil.php" class="nav-link">
+                        <a href="../perfil.php" class="nav-link <?= isActivePage('perfil.php') ?>">
                             <i class="fas fa-user-circle"></i>
                             <span>Meu Perfil</span>
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="logout.php" class="nav-link">
+                        <a href="../logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sair</span>
                         </a>
@@ -606,8 +856,22 @@ function urlOrdenar($coluna)
                     <h1>Lista de Produtos</h1>
                     <p class="header-subtitle">Gerencie e visualize todos os produtos do estoque</p>
                 </div>
+
+                <!-- Search Bar -->
+                <div class="search-container">
+                    <div class="search-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text"
+                            id="searchInput"
+                            class="search-input"
+                            placeholder="Pesquisar produtos..."
+                            autocomplete="off">
+                        <div id="searchResults" class="search-results"></div>
+                    </div>
+                </div>
+
                 <div class="header-right">
-                    <div class="user-info">
+                    <a href="../perfil.php" class="user-info">
                         <div class="user-avatar">
                             <?= strtoupper(substr($_SESSION['usuario_nome'], 0, 1)) ?>
                         </div>
@@ -615,18 +879,27 @@ function urlOrdenar($coluna)
                             <h3><?= htmlspecialchars($_SESSION['usuario_nome']) ?></h3>
                             <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
                         </div>
-                    </div>
+                    </a>
+
                     <a href="logout.php" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i>
                         Sair
                     </a>
                 </div>
+
             </div>
+
+            <!-- Success Message -->
+            <?php if (!empty($mensagemSucesso)): ?>
+                <div class="alert-success">
+                    <?= htmlspecialchars($mensagemSucesso) ?>
+                </div>
+            <?php endif; ?>
 
             <!-- Action Buttons -->
             <div class="action-buttons">
                 <?php if (temPermissao('cadastrar_produtos')): ?>
-                    <a href="cadastrar_prod.php" class="btn btn-primary">
+                    <a href="../create/create_product.php" class="btn btn-primary">
                         <i class="fas fa-plus"></i>
                         Novo Produto
                     </a>
@@ -653,15 +926,12 @@ function urlOrdenar($coluna)
                                     <th><a href="<?= urlOrdenar('estoque_minimo') ?>">Estoque Mín. <?= iconeOrdenacao('estoque_minimo') ?></a></th>
                                     <th><a href="<?= urlOrdenar('estoque_atual') ?>">Estoque Atual <?= iconeOrdenacao('estoque_atual') ?></a></th>
                                     <th><a href="<?= urlOrdenar('ativo') ?>">Status <?= iconeOrdenacao('ativo') ?></a></th>
-                                    <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
-                                        <th>Ações</th>
-                                    <?php endif; ?>
                                 </tr>
                             </thead>
 
                             <tbody>
                                 <?php foreach ($produtos as $p): ?>
-                                    <tr>
+                                    <tr onclick="window.location.href='focus_product.php?id=<?= $p['id_produto'] ?>'">
                                         <td class="product-name"><?= htmlspecialchars($p['nome']) ?></td>
                                         <td>
                                             <span class="product-code"><?= htmlspecialchars($p['codigo']) ?></span>
@@ -678,7 +948,7 @@ function urlOrdenar($coluna)
                                             </span>
                                         </td>
                                         <td class="description-cell" title="<?= htmlspecialchars($p['descricao']) ?>">
-                                            <?= htmlspecialchars($p['descricao'] ?: 'Sem descrição') ?>
+                                            <?= htmlspecialchars(strlen($p['descricao']) > 50 ? substr($p['descricao'], 0, 50) . '...' : ($p['descricao'] ?: 'Sem descrição')) ?>
                                         </td>
                                         <td class="price">
                                             R$ <?= number_format($p['preco_unitario'], 2, ',', '.') ?>
@@ -709,27 +979,6 @@ function urlOrdenar($coluna)
                                                 <?= $p['ativo'] ? 'Ativo' : 'Inativo' ?>
                                             </span>
                                         </td>
-                                        <?php if (temPermissao('editar_produtos') || temPermissao('excluir_produtos')): ?>
-                                            <td>
-                                                <div style="display: flex; gap: 8px;">
-                                                    <?php if (temPermissao('editar_produtos')): ?>
-                                                        <a href="editar_produto.php?id=<?= $p['id_produto'] ?>"
-                                                            style="color: #3b82f6; font-size: 0.875rem; text-decoration: none;"
-                                                            title="Editar">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                    <?php endif; ?>
-                                                    <?php if (temPermissao('excluir_produtos')): ?>
-                                                        <a href="excluir_produto.php?id=<?= $p['id_produto'] ?>"
-                                                            style="color: #ef4444; font-size: 0.875rem; text-decoration: none;"
-                                                            title="Excluir"
-                                                            onclick="return confirm('Tem certeza que deseja excluir este produto?')">
-                                                            <i class="fas fa-trash"></i>
-                                                        </a>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </td>
-                                        <?php endif; ?>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -742,7 +991,7 @@ function urlOrdenar($coluna)
                         <p>Não há produtos cadastrados no sistema ainda.</p>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <br>
-                            <a href="cadastrar_prod.php" class="btn btn-primary">
+                            <a href="../create/create_product.php" class="btn btn-primary">
                                 <i class="fas fa-plus"></i>
                                 Cadastrar Primeiro Produto
                             </a>
@@ -752,8 +1001,240 @@ function urlOrdenar($coluna)
             </div>
         </main>
     </div>
-</body>
 
-</html>
+    <script>
+        // Search functionality for local filtering
+        let searchTimeout;
+        const searchInput = document.getElementById('searchInput');
+        const tableRows = document.querySelectorAll('.products-table tbody tr');
+        const searchResults = document.getElementById('searchResults');
+
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+
+            // Hide the search results dropdown since we're doing local filtering
+            hideSearchResults();
+
+            clearTimeout(searchTimeout);
+
+            searchTimeout = setTimeout(() => {
+                filterProducts(query);
+            }, 300);
+        });
+
+        function filterProducts(query) {
+            let visibleCount = 0;
+
+            tableRows.forEach(row => {
+                // Get text content from all cells
+                const cells = row.querySelectorAll('td');
+                let rowText = '';
+
+                cells.forEach(cell => {
+                    // Skip the action buttons column (last column)
+                    if (cell !== cells[cells.length - 1]) {
+                        rowText += cell.textContent.toLowerCase() + ' ';
+                    }
+                });
+
+                const matches = rowText.includes(query) || query === '';
+
+                if (matches) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Update section title with count
+            updateProductCount(visibleCount);
+
+            // Show/hide empty state
+            toggleEmptyState(visibleCount === 0 && query !== '');
+        }
+
+        function updateProductCount(count) {
+            const sectionTitle = document.querySelector('.section-title');
+            const totalProducts = tableRows.length;
+
+            if (searchInput.value.trim()) {
+                sectionTitle.innerHTML = `
+            <i class="fas fa-boxes"></i>
+            Produtos Encontrados (${count} de ${totalProducts})
+        `;
+            } else {
+                sectionTitle.innerHTML = `
+            <i class="fas fa-boxes"></i>
+            Produtos Cadastrados (${totalProducts})
+        `;
+            }
+        }
+
+        function toggleEmptyState(show) {
+            let emptyState = document.getElementById('searchEmptyState');
+            const tableContainer = document.querySelector('.table-container');
+
+            if (show && !emptyState) {
+                emptyState = document.createElement('div');
+                emptyState.id = 'searchEmptyState';
+                emptyState.className = 'empty-state';
+                emptyState.innerHTML = `
+            <i class="fas fa-search"></i>
+            <h3>Nenhum produto encontrado</h3>
+            <p>Tente ajustar sua pesquisa ou limpe o campo de busca.</p>
+            <br>
+            <button onclick="clearSearch()" class="btn btn-primary">
+                <i class="fas fa-times"></i>
+                Limpar Busca
+            </button>
+        `;
+
+                // Insert after table container
+                tableContainer.parentNode.insertBefore(emptyState, tableContainer.nextSibling);
+                tableContainer.style.display = 'none';
+            } else if (!show && emptyState) {
+                emptyState.remove();
+                tableContainer.style.display = 'block';
+            } else if (show && emptyState) {
+                tableContainer.style.display = 'none';
+                emptyState.style.display = 'block';
+            } else if (!show && emptyState) {
+                tableContainer.style.display = 'block';
+                emptyState.style.display = 'none';
+            }
+        }
+
+        function clearSearch() {
+            searchInput.value = '';
+            filterProducts('');
+            searchInput.focus();
+        }
+
+        // Hide search results dropdown functions (keeping for compatibility)
+        function hideSearchResults() {
+            if (searchResults) {
+                searchResults.classList.remove('show');
+            }
+        }
+
+        // Hide results when clicking outside (modified to not interfere with local search)
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-container')) {
+                hideSearchResults();
+            }
+        });
+
+        // Enhanced keyboard navigation for search
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                clearSearch();
+                searchInput.blur();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                // Focus on first visible row if any
+                const firstVisibleRow = document.querySelector('.products-table tbody tr[style=""], .products-table tbody tr:not([style*="none"])');
+                if (firstVisibleRow) {
+                    firstVisibleRow.click();
+                }
+            }
+        });
+
+        // Add search stats
+        function showSearchStats() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            const visibleRows = document.querySelectorAll('.products-table tbody tr:not([style*="none"])');
+            const totalRows = tableRows.length;
+
+            console.log(`Pesquisa: "${query}" - ${visibleRows.length} de ${totalRows} produtos encontrados`);
+        }
+
+        // Highlight search terms in results (optional enhancement)
+        function highlightSearchTerms(query) {
+            if (!query) {
+                // Remove existing highlights
+                document.querySelectorAll('.search-highlight').forEach(el => {
+                    el.outerHTML = el.innerHTML;
+                });
+                return;
+            }
+
+            const regex = new RegExp(`(${query})`, 'gi');
+
+            tableRows.forEach(row => {
+                if (row.style.display !== 'none') {
+                    const cells = row.querySelectorAll('td:not(:last-child)'); // Exclude action column
+                    cells.forEach(cell => {
+                        // Skip if cell contains HTML elements we don't want to modify
+                        if (cell.querySelector('.product-code, .type-badge, .stock-badge, .status-badge, .price')) {
+                            return;
+                        }
+
+                        const originalHTML = cell.innerHTML;
+                        const highlightedHTML = originalHTML.replace(regex, '<span class="search-highlight">$1</span>');
+                        cell.innerHTML = highlightedHTML;
+                    });
+                }
+            });
+        }
+
+        // Add CSS for search highlighting
+        const searchStyle = document.createElement('style');
+        searchStyle.textContent = `
+    .search-highlight {
+        background-color: #fef3c7;
+        color: #d97706;
+        padding: 1px 2px;
+        border-radius: 2px;
+        font-weight: 500;
+    }
+    
+    .search-stats {
+        background: #f0f9ff;
+        color: #0369a1;
+        padding: 8px 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 0.875rem;
+        display: none;
+    }
+    
+    .search-stats.show {
+        display: block;
+    }
+`;
+        document.head.appendChild(searchStyle);
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up initial state
+            updateProductCount(tableRows.length);
+
+            // Add placeholder text with product count
+            searchInput.placeholder = `Pesquisar entre ${tableRows.length} produtos...`;
+
+            // Focus enhancement
+            searchInput.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'scale(1.02)';
+            });
+
+            searchInput.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'scale(1)';
+            });
+        });
+
+        // Adiciona feedback visual no clique das linhas da tabela
+        document.querySelectorAll('.products-table tbody tr').forEach(row => {
+            row.addEventListener('click', function() {
+                this.style.transform = 'scale(0.98)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 150);
+            });
+        });
+    </script>
+</body>
 
 </html>

@@ -3,7 +3,7 @@ session_start();
 
 // Verifica se está logado e tem permissão
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -18,7 +18,7 @@ function temPermissao($permissao)
     return in_array($permissao, $_SESSION['permissoes'] ?? []);
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 // Definir permissões por perfil
 $permissoes_por_perfil = [
@@ -44,12 +44,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $bd = new BancoDeDados();
 
         // Validar campos obrigatórios
+        $matricula = trim($_POST['matricula'] ?? '');
         $nome = trim($_POST['nome'] ?? '');
         $email = trim($_POST['email'] ?? '');
+        $telefone = trim($_POST['telefone'] ?? '');
+        $departamento = trim($_POST['departamento'] ?? '');
+        $cargo = trim($_POST['cargo'] ?? '');
+        $data_admissao = $_POST['data_admissao'] ?? '';
         $senha = $_POST['senha'] ?? '';
         $confirmar_senha = $_POST['confirmar_senha'] ?? '';
         $perfil = $_POST['perfil'] ?? '';
         $ativo = isset($_POST['ativo']) ? 1 : 0;
+
+        if (empty($matricula)) {
+            throw new Exception("Matrícula é obrigatória.");
+        }
+
+        if (!is_numeric($matricula) || $matricula <= 0) {
+            throw new Exception("Matrícula deve ser um número válido.");
+        }
+
+        if (strlen($matricula) < 4) {
+            throw new Exception("A matrícula deve ter no minimo 4 caracteres."); 
+        }
+
+        if (strlen($matricula) > 4) {
+            throw new Exception("A matrícula deve ter no maximo 4 caracteres."); 
+        }
 
         if (empty($nome)) {
             throw new Exception("Nome do usuário é obrigatório.");
@@ -67,8 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Senha é obrigatória.");
         }
 
-        if (strlen($senha) < 6) {
-            throw new Exception("A senha deve ter pelo menos 6 caracteres.");
+        if (strlen($senha) < 8) {
+            throw new Exception("A senha deve ter pelo menos 8 caracteres.");
         }
 
         if ($senha !== $confirmar_senha) {
@@ -79,10 +100,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception("Perfil do usuário é obrigatório.");
         }
 
+        // Validar data de admissão se fornecida
+        if (!empty($data_admissao)) {
+            $date = DateTime::createFromFormat('Y-m-d', $data_admissao);
+            if (!$date || $date->format('Y-m-d') !== $data_admissao) {
+                throw new Exception("Data de admissão inválida.");
+            }
+        }
+
+        // Verificar se matrícula já existe
+        $stmt_check_matricula = $bd->pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE matricula = ?");
+        $stmt_check_matricula->execute([$matricula]);
+        if ($stmt_check_matricula->fetchColumn() > 0) {
+            throw new Exception("Esta matrícula já está cadastrada.");
+        }
+
         // Verificar se email já existe
-        $stmt_check = $bd->pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ?");
-        $stmt_check->execute([$email]);
-        if ($stmt_check->fetchColumn() > 0) {
+        $stmt_check_email = $bd->pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE email = ?");
+        $stmt_check_email->execute([$email]);
+        if ($stmt_check_email->fetchColumn() > 0) {
             throw new Exception("Este email já está cadastrado.");
         }
 
@@ -93,10 +129,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Hash da senha
             $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
 
+            // Preparar valores para inserção (NULL para campos vazios)
+            $telefone = !empty($telefone) ? $telefone : null;
+            $departamento = !empty($departamento) ? $departamento : null;
+            $cargo = !empty($cargo) ? $cargo : null;
+            $data_admissao = !empty($data_admissao) ? $data_admissao : null;
+
             // Inserir usuário
-            $sql = "INSERT INTO usuarios (nome, email, senha, perfil, ativo) VALUES (?, ?, ?, ?, ?)";
+            $sql = "INSERT INTO usuarios (matricula, nome, email, telefone, departamento, cargo, data_admissao, senha, perfil, ativo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $bd->pdo->prepare($sql);
-            $stmt->execute([$nome, $email, $senha_hash, $perfil, $ativo]);
+            $stmt->execute([
+                $matricula,
+                $nome,
+                $email,
+                $telefone,
+                $departamento,
+                $cargo,
+                $data_admissao,
+                $senha_hash,
+                $perfil,
+                $ativo
+            ]);
 
             $usuario_id = $bd->pdo->lastInsertId();
 
@@ -124,11 +177,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['mensagem_sucesso'] = "Usuário cadastrado com sucesso!";
 
             // Redireciona para a listagem
-            header("Location: listar_usuarios.php");
+            header("Location: ../read/read_user.php");
             exit;
 
-            // Limpar campos após sucesso
-            $_POST = [];
         } catch (Exception $e) {
             $bd->pdo->rollBack();
             throw $e;
@@ -137,6 +188,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mensagem = "Erro: " . $e->getMessage();
         $tipo_mensagem = "error";
     }
+}
+
+// Função para determinar se a página atual está ativa
+function isActivePage($page)
+{
+    $current = basename($_SERVER['PHP_SELF']);
+    return $current === $page ? 'active' : '';
 }
 ?>
 <!DOCTYPE html>
@@ -281,10 +339,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .user-info {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 8px 16px;
-            background: #f1f5f9;
+            gap: 10px;
+            padding: 8px 12px;
             border-radius: 8px;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.3s ease, transform 0.2s ease;
+        }
+
+        .user-info:hover {
+            background: rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transform: scale(1.02);
         }
 
         .user-avatar {
@@ -581,7 +647,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <!-- Dashboard -->
                 <div class="nav-section">
                     <div class="nav-item">
-                        <a href="index.php" class="nav-link">
+                        <a href="../index.php" class="nav-link <?= isActivePage('index.php') ?>">
                             <i class="fas fa-chart-line"></i>
                             <span>Dashboard</span>
                         </a>
@@ -593,14 +659,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="nav-section">
                         <div class="nav-section-title">Produtos</div>
                         <div class="nav-item">
-                            <a href="listar_produtos.php" class="nav-link">
+                            <a href="../read/read_product.php" class="nav-link <?= isActivePage('read_product.php') ?>">
                                 <i class="fas fa-list"></i>
                                 <span>Listar Produtos</span>
                             </a>
                         </div>
                         <?php if (temPermissao('cadastrar_produtos')): ?>
                             <div class="nav-item">
-                                <a href="cadastrar_prod.php" class="nav-link">
+                                <a href="../create/create_product.php"
+                                    class="nav-link <?= isActivePage('create_product.php') ?>">
                                     <i class="fas fa-plus"></i>
                                     <span>Cadastrar Produto</span>
                                 </a>
@@ -613,25 +680,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="nav-section">
                     <div class="nav-section-title">Fornecedores</div>
                     <div class="nav-item">
-                        <a href="listar_fornecedores.php" class="nav-link active">
+                        <a href="../read/read_supplier.php" class="nav-link <?= isActivePage('read_supplier.php') ?>">
                             <i class="fas fa-truck"></i>
                             <span>Listar Fornecedores</span>
                         </a>
                     </div>
                 </div>
 
+                <!-- Logs -->
+                <?php if (temPermissao('listar_produtos')): ?>
+                    <div class="nav-section">
+                        <div class="nav-section-title">Logs</div>
+                        <div class="nav-item">
+                            <a href="../log/product_input_and_output_log.php"
+                                class="nav-link <?= isActivePage('product_input_and_output_log.php') ?>">
+                                <i class="fas fa-history"></i>
+                                <span>Movimentações</span>
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <!-- Usuários -->
                 <?php if (temPermissao('gerenciar_usuarios')): ?>
                     <div class="nav-section">
                         <div class="nav-section-title">Usuários</div>
                         <div class="nav-item">
-                            <a href="listar_usuarios.php" class="nav-link">
+                            <a href="../read/read_user.php" class="nav-link <?= isActivePage('read_user.php') ?>">
                                 <i class="fas fa-users"></i>
                                 <span>Listar Usuários</span>
                             </a>
                         </div>
                         <div class="nav-item">
-                            <a href="cadastrar_usuario.php" class="nav-link">
+                            <a href="../create/create_user.php" class="nav-link <?= isActivePage('create_user.php') ?>">
                                 <i class="fas fa-user-plus"></i>
                                 <span>Cadastrar Usuário</span>
                             </a>
@@ -643,13 +724,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="nav-section">
                     <div class="nav-section-title">Sistema</div>
                     <div class="nav-item">
-                        <a href="perfil.php" class="nav-link">
+                        <a href="../perfil.php" class="nav-link <?= isActivePage('perfil.php') ?>">
                             <i class="fas fa-user-circle"></i>
                             <span>Meu Perfil</span>
                         </a>
                     </div>
                     <div class="nav-item">
-                        <a href="logout.php" class="nav-link">
+                        <a href="../logout.php" class="nav-link">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Sair</span>
                         </a>
@@ -667,7 +748,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <p class="header-subtitle">Adicione um novo usuário ao sistema</p>
                 </div>
                 <div class="header-right">
-                    <div class="user-info">
+                    <a href="../perfil.php" class="user-info">
                         <div class="user-avatar">
                             <?= strtoupper(substr($_SESSION['usuario_nome'], 0, 1)) ?>
                         </div>
@@ -675,12 +756,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <h3><?= htmlspecialchars($_SESSION['usuario_nome']) ?></h3>
                             <p><?= htmlspecialchars(ucfirst($_SESSION['usuario_perfil'])) ?></p>
                         </div>
-                    </div>
+                    </a>
+
                     <a href="logout.php" class="btn-logout">
                         <i class="fas fa-sign-out-alt"></i>
                         Sair
                     </a>
                 </div>
+
             </div>
 
             <!-- Messages -->
@@ -700,6 +783,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <form method="POST" action="">
                     <div class="form-grid">
+                        <!-- Matrícula -->
+                        <div class="form-group">
+                            <label class="form-label" for="matricula">
+                                Matrícula <span class="required">*</span>
+                            </label>
+                            <input type="number"
+                                id="matricula"
+                                name="matricula"
+                                class="form-input"
+                                value="<?= htmlspecialchars($_POST['matricula'] ?? '') ?>"
+                                required
+                                min="4"
+                                placeholder="Ex: 1234">
+                            <div class="input-hint">Número único de identificação do funcionário</div>
+                        </div>
+
                         <!-- Nome -->
                         <div class="form-group">
                             <label class="form-label" for="nome">
@@ -730,6 +829,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <div class="input-hint">Email único para login no sistema</div>
                         </div>
 
+                        <!-- Telefone -->
+                        <div class="form-group">
+                            <label class="form-label" for="telefone">
+                                Telefone
+                            </label>
+                            <input type="tel"
+                                id="telefone"
+                                name="telefone"
+                                class="form-input"
+                                value="<?= htmlspecialchars($_POST['telefone'] ?? '') ?>"
+                                placeholder="Ex: (11) 99999-9999">
+                            <div class="input-hint">Telefone de contato do funcionário</div>
+                        </div>
+
+                        <!-- Departamento -->
+                        <div class="form-group">
+                            <label class="form-label" for="departamento">
+                                Departamento
+                            </label>
+                            <select id="departamento" name="departamento" class="form-select">
+                                <option value="">Selecione um departamento</option>
+                                <option value="administracao" <?= ($_POST['departamento'] ?? '') === 'administracao' ? 'selected' : '' ?>>
+                                    Administração
+                                </option>
+                                <option value="vendas" <?= ($_POST['departamento'] ?? '') === 'vendas' ? 'selected' : '' ?>>
+                                    Vendas
+                                </option>
+                                <option value="compras" <?= ($_POST['departamento'] ?? '') === 'compras' ? 'selected' : '' ?>>
+                                    Compras
+                                </option>
+                                <option value="estoque" <?= ($_POST['departamento'] ?? '') === 'estoque' ? 'selected' : '' ?>>
+                                    Estoque
+                                </option>
+                                <option value="producao" <?= ($_POST['departamento'] ?? '') === 'producao' ? 'selected' : '' ?>>
+                                    Produção
+                                </option>
+                                <option value="ti" <?= ($_POST['departamento'] ?? '') === 'ti' ? 'selected' : '' ?>>
+                                    T.I.
+                                </option>
+                                <option value="rh" <?= ($_POST['departamento'] ?? '') === 'rh' ? 'selected' : '' ?>>
+                                    Recursos Humanos
+                                </option>
+                                <option value="financeiro" <?= ($_POST['departamento'] ?? '') === 'financeiro' ? 'selected' : '' ?>>
+                                    Financeiro
+                                </option>
+                            </select>
+                            <div class="input-hint">Departamento onde o funcionário trabalha</div>
+                        </div>
+
+                        <!-- Cargo -->
+                        <div class="form-group">
+                            <label class="form-label" for="cargo">
+                                Cargo
+                            </label>
+                            <input type="text"
+                                id="cargo"
+                                name="cargo"
+                                class="form-input"
+                                value="<?= htmlspecialchars($_POST['cargo'] ?? '') ?>"
+                                placeholder="Ex: Analista de Sistemas">
+                            <div class="input-hint">Cargo ou função do funcionário</div>
+                        </div>
+
+                        <!-- Data de Admissão -->
+                        <div class="form-group">
+                            <label class="form-label" for="data_admissao">
+                                Data de Admissão
+                            </label>
+                            <input type="date"
+                                id="data_admissao"
+                                name="data_admissao"
+                                class="form-input"
+                                value="<?= htmlspecialchars($_POST['data_admissao'] ?? '') ?>">
+                            <div class="input-hint">Data de admissão na empresa</div>
+                        </div>
+
                         <!-- Senha -->
                         <div class="form-group">
                             <label class="form-label" for="senha">
@@ -740,9 +915,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 name="senha"
                                 class="form-input"
                                 required
-                                minlength="6"
-                                placeholder="Mínimo 6 caracteres">
-                            <div class="input-hint">Senha deve ter pelo menos 6 caracteres</div>
+                                minlength="8"
+                                placeholder="Mínimo 8 caracteres">
+                            <div class="input-hint">Senha deve ter pelo menos 8 caracteres</div>
                         </div>
 
                         <!-- Confirmar Senha -->
@@ -755,7 +930,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 name="confirmar_senha"
                                 class="form-input"
                                 required
-                                minlength="6"
+                                minlength="8"
                                 placeholder="Digite a senha novamente">
                             <div class="input-hint">Repita a senha para confirmação</div>
                         </div>
@@ -833,7 +1008,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <!-- Form Actions -->
                     <div class="form-actions">
-                        <a href="listar_usuarios.php" class="btn btn-secondary">
+                        <a href="../read/read_user.php" class="btn btn-secondary">
                             <i class="fas fa-times"></i>
                             Cancelar
                         </a>
@@ -849,7 +1024,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script>
         // Auto-focus no primeiro campo
-        document.getElementById('nome').focus();
+        document.getElementById('matricula').focus();
 
         // Mostrar informações do perfil quando selecionado
         document.getElementById('perfil').addEventListener('change', function() {
@@ -889,12 +1064,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (senha !== confirmarSenha) {
                 this.setCustomValidity('As senhas não coincidem');
-                this.style.border
                 this.style.borderColor = '#dc2626';
             } else {
                 this.setCustomValidity('');
                 this.style.borderColor = '';
             }
+        });
+
+        // Validação de matrícula (apenas números)
+        document.getElementById('matricula').addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+        });
+
+        // Formatação do telefone
+        document.getElementById('telefone').addEventListener('input', function() {
+            let value = this.value.replace(/\D/g, '');
+            
+            if (value.length >= 11) {
+                value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+            } else if (value.length >= 7) {
+                value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+            } else if (value.length >= 3) {
+                value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+            }
+            
+            this.value = value;
         });
 
         // Disparar o evento de mudança para exibir as permissões no carregamento
@@ -903,6 +1097,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const event = new Event('change');
             perfilSelect.dispatchEvent(event);
         });
+
+        // Validação da data de admissão (não pode ser futura)
+        document.getElementById('data_admissao').addEventListener('change', function() {
+            const dataAdmissao = new Date(this.value);
+            const hoje = new Date();
+            
+            if (dataAdmissao > hoje) {
+                alert('A data de admissão não pode ser futura.');
+                this.value = '';
+            }
+        });
+
+        // Definir data máxima como hoje
+        document.getElementById('data_admissao').max = new Date().toISOString().split('T')[0];
     </script>
 </body>
 

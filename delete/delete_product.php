@@ -3,7 +3,7 @@ session_start();
 
 // Verifica se está logado
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -13,11 +13,11 @@ if (!in_array('excluir_produtos', $_SESSION['permissoes'])) {
     exit;
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 // Verifica se foi passado o ID do produto
 if (!isset($_GET['id']) || empty($_GET['id'])) {
-    header("Location: listar_produtos.php?erro=id_invalido");
+    header("Location: ../read/read_product.php?erro=id_invalido");
     exit;
 }
 
@@ -34,7 +34,7 @@ try {
     $produto = $stmt_verificar->fetch(PDO::FETCH_ASSOC);
     
     if (!$produto) {
-        header("Location: listar_produtos.php?erro=produto_nao_encontrado");
+        header("Location: ../read/read_product.php?erro=produto_nao_encontrado");
         exit;
     }
     
@@ -66,7 +66,7 @@ try {
                 $stmt_desativar->execute();
                 
                 $bd->pdo->commit();
-                header("Location: listar_produtos.php?sucesso=produto_desativado");
+                header("Location: ../read/read_product.php?sucesso=produto_desativado");
                 exit;
             } else {
                 // Se não há movimentações, exclui fisicamente
@@ -76,7 +76,7 @@ try {
                 $stmt_excluir->execute();
                 
                 $bd->pdo->commit();
-                header("Location: listar_produtos.php?sucesso=produto_excluido");
+                header("Location: ../read/read_product.php?sucesso=produto_excluido");
                 exit;
             }
         } catch (Exception $e) {
@@ -316,7 +316,7 @@ try {
                     <?= htmlspecialchars($erro_exclusao) ?>
                 </div>
                 <div class="buttons">
-                    <a href="listar_produtos.php" class="btn btn-cancel">
+                    <a href="../read/focus_product.php" class="btn btn-cancel">
                         <i class="fas fa-arrow-left"></i>
                         Voltar
                     </a>
@@ -347,7 +347,7 @@ try {
                     <form method="POST" action="">
                         <input type="hidden" name="confirmar_exclusao" value="sim">
                         <div class="buttons">
-                            <a href="listar_produtos.php" class="btn btn-cancel">
+                            <a href="../read/focus_product.php" class="btn btn-cancel">  
                                 <i class="fas fa-times"></i>
                                 Cancelar
                             </a>

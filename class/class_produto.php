@@ -3,21 +3,21 @@ session_start();
 
 // Verifica se está logado e tem permissão
 if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
 if (!in_array('cadastrar_produtos', $_SESSION['permissoes'] ?? [])) {
     $_SESSION['mensagem'] = "Acesso negado. Você não tem permissão para cadastrar produtos.";
     $_SESSION['tipo_mensagem'] = "error";
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit;
 }
 
-require_once 'conexao.php';
+require_once '../conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: cadastrar_prod.php");
+    header("Location: ../create/create_product.php");
     exit;
 }
 
@@ -83,7 +83,7 @@ try {
         $_SESSION['mensagem'] = implode(" ", $erros);
         $_SESSION['tipo_mensagem'] = "error";
         $_SESSION['form_data'] = $_POST; // Preserva os dados do formulário
-        header("Location: cadastrar_prod.php");
+        header("Location: ../create/create_product.php");
         exit;
     }
     
@@ -179,9 +179,9 @@ try {
         
         // Redirecionar para a listagem ou para cadastrar outro
         if (isset($_POST['action']) && $_POST['action'] === 'save_and_new') {
-            header("Location: cadastrar_prod.php?novo=1");
+            header("Location: ../create/create_product.php?novo=1");
         } else {
-            header("Location: listar_produtos.php");
+            header("Location: ../read/read_product.php");
         }
         exit;
         
@@ -194,7 +194,7 @@ try {
     $_SESSION['mensagem'] = "Erro interno do sistema. Tente novamente mais tarde.";
     $_SESSION['tipo_mensagem'] = "error";
     $_SESSION['form_data'] = $_POST;
-    header("Location: cadastrar_prod.php");
+    header("Location: ../create/create_product.php");
     exit;
     
 } catch (Exception $e) {
@@ -202,7 +202,7 @@ try {
     $_SESSION['mensagem'] = "Erro: " . $e->getMessage();
     $_SESSION['tipo_mensagem'] = "error";
     $_SESSION['form_data'] = $_POST;
-    header("Location: cadastrar_prod.php");
+    header("Location: ../create/create_product.php");
     exit;
 }
 ?>
