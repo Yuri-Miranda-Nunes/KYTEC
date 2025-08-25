@@ -25,34 +25,100 @@ $bd = new BancoDeDados();
 $mensagemSucesso = '';
 $mensagemErro = '';
 
+// Função para limpar CNPJ (remover formatação)
+function limparCNPJ($cnpj) {
+    return preg_replace('/[^0-9]/', '', $cnpj);
+}
+
+// Função para validar CNPJ
+function validarCNPJ($cnpj) {
+    $cnpj = limparCNPJ($cnpj);
+    
+    if (strlen($cnpj) != 14) {
+        return false;
+    }
+    
+    // Elimina CNPJs inválidos conhecidos
+    if (preg_match('/^(\d)\1{13}$/', $cnpj)) {
+        return false;
+    }
+    
+    // Validação do primeiro dígito verificador
+    $soma = 0;
+    $peso = 5;
+    for ($i = 0; $i < 12; $i++) {
+        $soma += $cnpj[$i] * $peso;
+        $peso = $peso == 2 ? 9 : $peso - 1;
+    }
+    $dv1 = ($soma % 11) < 2 ? 0 : 11 - ($soma % 11);
+    
+    if ($cnpj[12] != $dv1) {
+        return false;
+    }
+    
+    // Validação do segundo dígito verificador
+    $soma = 0;
+    $peso = 6;
+    for ($i = 0; $i < 13; $i++) {
+        $soma += $cnpj[$i] * $peso;
+        $peso = $peso == 2 ? 9 : $peso - 1;
+    }
+    $dv2 = ($soma % 11) < 2 ? 0 : 11 - ($soma % 11);
+    
+    return $cnpj[13] == $dv2;
+}
+
 // Processar formulário
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         // Validações básicas
         $cnpj = trim($_POST['cnpj'] ?? '');
+        $cnpj_limpo = limparCNPJ($cnpj);
         $nome_empresa = trim($_POST['nome_empresa'] ?? '');
         $atividade = trim($_POST['atividade'] ?? '');
         $nome_representante = trim($_POST['nome_representante'] ?? '');
         $telefone_representante = trim($_POST['telefone_representante'] ?? '');
         $email_representante = trim($_POST['email_representante'] ?? '');
-        $endereco = trim($_POST['endereco'] ?? '');
+        
+        // Dados de endereço
+        $cep = trim($_POST['cep'] ?? '');
+        $logradouro = trim($_POST['logradouro'] ?? '');
+        $numero = trim($_POST['numero'] ?? '');
+        $complemento = trim($_POST['complemento'] ?? '');
+        $bairro = trim($_POST['bairro'] ?? '');
+        $cidade = trim($_POST['cidade'] ?? '');
+        $estado = trim($_POST['estado'] ?? '');
 
         // Validações obrigatórias
         if (empty($nome_empresa)) {
             throw new Exception("Nome da empresa é obrigatório.");
         }
 
-        if (empty($cnpj)) {
+        if (empty($cnpj_limpo)) {
             throw new Exception("CNPJ é obrigatório.");
+        }
+
+        if (!validarCNPJ($cnpj_limpo)) {
+            throw new Exception("CNPJ inválido. Verifique os números digitados.");
         }
 
         if (empty($nome_representante)) {
             throw new Exception("Nome do representante é obrigatório.");
         }
 
+        // Validar email se fornecido
+        if (!empty($email_representante) && !filter_var($email_representante, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception("E-mail inválido.");
+        }
+
+        // Validar CEP se fornecido
+        if (!empty($cep) && !preg_match('/^\d{5}-?\d{3}$/', $cep)) {
+            throw new Exception("CEP inválido. Use o formato 00000-000.");
+        }
+
         // Verifica se CNPJ já existe
         $stmt = $bd->pdo->prepare("SELECT id_fornecedor FROM fornecedores WHERE cnpj = ?");
-        $stmt->execute([$cnpj]);
+        $stmt->execute([$cnpj]); // Salvar com formatação
         if ($stmt->fetch()) {
             throw new Exception("CNPJ já cadastrado no sistema.");
         }
@@ -60,19 +126,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Inserir fornecedor
         $sql = "INSERT INTO fornecedores (
                     cnpj, nome_empresa, atividade, nome_representante, 
-                    telefone_representante, email_representante, endereco,
+                    telefone_representante, email_representante, 
+                    cep, logradouro, numero, complemento, bairro, cidade, estado,
                     criado_em, atualizado_em
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
 
         $stmt = $bd->pdo->prepare($sql);
         $stmt->execute([
-            $cnpj,
+            $cnpj, // Salvar com formatação
             $nome_empresa,
             $atividade,
             $nome_representante,
             $telefone_representante,
             $email_representante,
-            $endereco
+            $cep,
+            $logradouro,
+            $numero,
+            $complemento,
+            $bairro,
+            $cidade,
+            $estado
         ]);
 
         $fornecedorId = $bd->pdo->lastInsertId();
@@ -88,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'nome_representante' => $nome_representante,
             'telefone_representante' => $telefone_representante,
             'email_representante' => $email_representante,
-            'endereco' => $endereco
+            'endereco_completo' => implode(', ', array_filter([$logradouro, $numero, $complemento, $bairro, $cidade, $estado, $cep]))
         ]);
 
         $stmtLog = $bd->pdo->prepare($sqlLog);
@@ -352,6 +425,10 @@ function isActivePage($page)
             grid-column: 1 / -1;
         }
 
+        .form-group.half-width {
+            grid-column: span 1;
+        }
+
         .form-label {
             font-size: 0.875rem;
             font-weight: 500;
@@ -367,8 +444,7 @@ function isActivePage($page)
         }
 
         .form-input,
-        .form-select,
-        .form-textarea {
+        .form-select {
             padding: 12px 16px;
             border: 2px solid #e2e8f0;
             border-radius: 8px;
@@ -378,22 +454,49 @@ function isActivePage($page)
         }
 
         .form-input:focus,
-        .form-select:focus,
-        .form-textarea:focus {
+        .form-select:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .form-textarea {
-            resize: vertical;
-            min-height: 100px;
         }
 
         .form-help {
             font-size: 0.75rem;
             color: #64748b;
             margin-top: 4px;
+        }
+
+        /* Input com ícone */
+        .input-icon {
+            position: relative;
+        }
+
+        .input-icon input,
+        .input-icon select {
+            padding-left: 40px;
+        }
+
+        .input-icon i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+        }
+
+        /* Seção de endereço */
+        .address-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .address-full-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
         }
 
         /* Action Buttons */
@@ -463,62 +566,7 @@ function isActivePage($page)
             border: 1px solid #fecaca;
         }
 
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
-
-            .form-actions {
-                flex-direction: column;
-            }
-
-            .header {
-                flex-direction: column;
-                gap: 16px;
-                text-align: center;
-            }
-        }
-
-        /* Input Masks and Validations */
-        .input-icon {
-            position: relative;
-        }
-
-        .input-icon input {
-            padding-left: 40px;
-        }
-
-        .input-icon i {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #64748b;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 16px;
-        }
-
-        .form-row .form-group {
-            flex: 1;
-        }
-
-        /* Card styling for form sections */
+        /* Info Card */
         .info-card {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -541,6 +589,56 @@ function isActivePage($page)
             font-size: 0.875rem;
             color: #64748b;
             line-height: 1.5;
+        }
+
+        /* Estados brasileiros select */
+        .estado-select {
+            text-transform: uppercase;
+        }
+
+        /* Validation styles */
+        .form-input.valid {
+            border-color: #10b981;
+            background-color: #f0fdf4;
+        }
+
+        .form-input.invalid {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .address-grid,
+            .address-full-row {
+                grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -729,9 +827,9 @@ function isActivePage($page)
                                     placeholder="00.000.000/0000-00"
                                     value="<?= htmlspecialchars($_POST['cnpj'] ?? '') ?>"
                                     required
-                                    maxlength="14">
+                                    maxlength="18">
                             </div>
-                            <div class="form-help">Digite apenas números, a formatação será aplicada automaticamente</div>
+                            <div class="form-help">Digite os números do CNPJ, a formatação será aplicada automaticamente</div>
                         </div>
 
                         <div class="form-group">
@@ -765,18 +863,6 @@ function isActivePage($page)
                                     value="<?= htmlspecialchars($_POST['atividade'] ?? '') ?>"
                                     maxlength="100">
                             </div>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <label for="endereco" class="form-label">
-                                Endereço Completo
-                            </label>
-                            <textarea id="endereco"
-                                name="endereco"
-                                class="form-textarea"
-                                placeholder="Rua, número, bairro, cidade, estado, CEP"
-                                rows="3"><?= htmlspecialchars($_POST['endereco'] ?? '') ?></textarea>
-                            <div class="form-help">Inclua rua, número, bairro, cidade, estado e CEP</div>
                         </div>
                     </div>
 
@@ -836,6 +922,138 @@ function isActivePage($page)
                         </div>
                     </div>
 
+                    <!-- Endereço -->
+                    <h3 style="margin: 32px 0 24px 0; color: #374151; font-size: 1.125rem; font-weight: 600;">
+                        <i class="fas fa-map-marker-alt"></i> Endereço
+                    </h3>
+
+                    <div class="address-grid">
+                        <div class="form-group">
+                            <label for="cep" class="form-label">CEP</label>
+                            <div class="input-icon">
+                                <i class="fas fa-mail-bulk"></i>
+                                <input type="text"
+                                    id="cep"
+                                    name="cep"
+                                    class="form-input"
+                                    placeholder="00000-000"
+                                    value="<?= htmlspecialchars($_POST['cep'] ?? '') ?>"
+                                    maxlength="10">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="logradouro" class="form-label">Logradouro</label>
+                            <div class="input-icon">
+                                <i class="fas fa-road"></i>
+                                <input type="text"
+                                    id="logradouro"
+                                    name="logradouro"
+                                    class="form-input"
+                                    placeholder="Rua, Avenida, etc."
+                                    value="<?= htmlspecialchars($_POST['logradouro'] ?? '') ?>"
+                                    maxlength="200">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="numero" class="form-label">Número</label>
+                            <div class="input-icon">
+                                <i class="fas fa-hashtag"></i>
+                                <input type="text"
+                                    id="numero"
+                                    name="numero"
+                                    class="form-input"
+                                    placeholder="123"
+                                    value="<?= htmlspecialchars($_POST['numero'] ?? '') ?>"
+                                    maxlength="20">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="address-full-row">
+                        <div class="form-group">
+                            <label for="complemento" class="form-label">Complemento</label>
+                            <div class="input-icon">
+                                <i class="fas fa-plus-circle"></i>
+                                <input type="text"
+                                    id="complemento"
+                                    name="complemento"
+                                    class="form-input"
+                                    placeholder="Apartamento, Sala, etc."
+                                    value="<?= htmlspecialchars($_POST['complemento'] ?? '') ?>"
+                                    maxlength="100">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="bairro" class="form-label">Bairro</label>
+                            <div class="input-icon">
+                                <i class="fas fa-map"></i>
+                                <input type="text"
+                                    id="bairro"
+                                    name="bairro"
+                                    class="form-input"
+                                    placeholder="Nome do bairro"
+                                    value="<?= htmlspecialchars($_POST['bairro'] ?? '') ?>"
+                                    maxlength="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="address-full-row">
+                        <div class="form-group">
+                            <label for="cidade" class="form-label">Cidade</label>
+                            <div class="input-icon">
+                                <i class="fas fa-city"></i>
+                                <input type="text"
+                                    id="cidade"
+                                    name="cidade"
+                                    class="form-input"
+                                    placeholder="Nome da cidade"
+                                    value="<?= htmlspecialchars($_POST['cidade'] ?? '') ?>"
+                                    maxlength="100">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="estado" class="form-label">Estado</label>
+                            <div class="input-icon">
+                                <i class="fas fa-flag"></i>
+                                <select id="estado" name="estado" class="form-input estado-select">
+                                    <option value="">Selecione o estado</option>
+                                    <option value="AC" <?= ($_POST['estado'] ?? '') === 'AC' ? 'selected' : '' ?>>Acre</option>
+                                    <option value="AL" <?= ($_POST['estado'] ?? '') === 'AL' ? 'selected' : '' ?>>Alagoas</option>
+                                    <option value="AP" <?= ($_POST['estado'] ?? '') === 'AP' ? 'selected' : '' ?>>Amapá</option>
+                                    <option value="AM" <?= ($_POST['estado'] ?? '') === 'AM' ? 'selected' : '' ?>>Amazonas</option>
+                                    <option value="BA" <?= ($_POST['estado'] ?? '') === 'BA' ? 'selected' : '' ?>>Bahia</option>
+                                    <option value="CE" <?= ($_POST['estado'] ?? '') === 'CE' ? 'selected' : '' ?>>Ceará</option>
+                                    <option value="DF" <?= ($_POST['estado'] ?? '') === 'DF' ? 'selected' : '' ?>>Distrito Federal</option>
+                                    <option value="ES" <?= ($_POST['estado'] ?? '') === 'ES' ? 'selected' : '' ?>>Espírito Santo</option>
+                                    <option value="GO" <?= ($_POST['estado'] ?? '') === 'GO' ? 'selected' : '' ?>>Goiás</option>
+                                    <option value="MA" <?= ($_POST['estado'] ?? '') === 'MA' ? 'selected' : '' ?>>Maranhão</option>
+                                    <option value="MT" <?= ($_POST['estado'] ?? '') === 'MT' ? 'selected' : '' ?>>Mato Grosso</option>
+                                    <option value="MS" <?= ($_POST['estado'] ?? '') === 'MS' ? 'selected' : '' ?>>Mato Grosso do Sul</option>
+                                    <option value="MG" <?= ($_POST['estado'] ?? '') === 'MG' ? 'selected' : '' ?>>Minas Gerais</option>
+                                    <option value="PA" <?= ($_POST['estado'] ?? '') === 'PA' ? 'selected' : '' ?>>Pará</option>
+                                    <option value="PB" <?= ($_POST['estado'] ?? '') === 'PB' ? 'selected' : '' ?>>Paraíba</option>
+                                    <option value="PR" <?= ($_POST['estado'] ?? '') === 'PR' ? 'selected' : '' ?>>Paraná</option>
+                                    <option value="PE" <?= ($_POST['estado'] ?? '') === 'PE' ? 'selected' : '' ?>>Pernambuco</option>
+                                    <option value="PI" <?= ($_POST['estado'] ?? '') === 'PI' ? 'selected' : '' ?>>Piauí</option>
+                                    <option value="RJ" <?= ($_POST['estado'] ?? '') === 'RJ' ? 'selected' : '' ?>>Rio de Janeiro</option>
+                                    <option value="RN" <?= ($_POST['estado'] ?? '') === 'RN' ? 'selected' : '' ?>>Rio Grande do Norte</option>
+                                    <option value="RS" <?= ($_POST['estado'] ?? '') === 'RS' ? 'selected' : '' ?>>Rio Grande do Sul</option>
+                                    <option value="RO" <?= ($_POST['estado'] ?? '') === 'RO' ? 'selected' : '' ?>>Rondônia</option>
+                                    <option value="RR" <?= ($_POST['estado'] ?? '') === 'RR' ? 'selected' : '' ?>>Roraima</option>
+                                    <option value="SC" <?= ($_POST['estado'] ?? '') === 'SC' ? 'selected' : '' ?>>Santa Catarina</option>
+                                    <option value="SP" <?= ($_POST['estado'] ?? '') === 'SP' ? 'selected' : '' ?>>São Paulo</option>
+                                    <option value="SE" <?= ($_POST['estado'] ?? '') === 'SE' ? 'selected' : '' ?>>Sergipe</option>
+                                    <option value="TO" <?= ($_POST['estado'] ?? '') === 'TO' ? 'selected' : '' ?>>Tocantins</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Actions -->
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">
@@ -857,11 +1075,57 @@ function isActivePage($page)
         // Máscara para CNPJ
         document.getElementById('cnpj').addEventListener('input', function(e) {
             let value = e.target.value.replace(/\D/g, '');
-            value = value.replace(/^(\d{2})(\d)/, '$1.$2');
-            value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-            value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
-            value = value.replace(/(\d{4})(\d)/, '$1-$2');
+            
+            // Limita a 14 dígitos
+            if (value.length > 14) {
+                value = value.substring(0, 14);
+            }
+            
+            // Aplica formatação
+            if (value.length > 2) {
+                value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+            }
+            if (value.length > 6) {
+                value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+            }
+            if (value.length > 10) {
+                value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+            }
+            if (value.length > 13) {
+                value = value.replace(/(\d{4})(\d)/, '$1-$2');
+            }
+            
             e.target.value = value;
+            
+            // Validação visual em tempo real
+            if (value.replace(/\D/g, '').length === 14) {
+                if (validarCNPJ(value)) {
+                    e.target.classList.remove('invalid');
+                    e.target.classList.add('valid');
+                } else {
+                    e.target.classList.remove('valid');
+                    e.target.classList.add('invalid');
+                }
+            } else {
+                e.target.classList.remove('valid', 'invalid');
+            }
+        });
+
+        // Máscara para CEP
+        document.getElementById('cep').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 5) {
+                value = value.replace(/^(\d{5})(\d)/, '$1-$2');
+            }
+            if (value.length > 9) {
+                value = value.substring(0, 9);
+            }
+            e.target.value = value;
+            
+            // Buscar endereço pelo CEP quando completo
+            if (value.replace(/\D/g, '').length === 8) {
+                buscarEnderecoPorCEP(value.replace(/\D/g, ''));
+            }
         });
 
         // Máscara para telefone
@@ -887,35 +1151,51 @@ function isActivePage($page)
             // Elimina CNPJs inválidos conhecidos
             if (/^(\d)\1{13}$/.test(cnpj)) return false;
 
-            // Valida DVs
-            let tamanho = cnpj.length - 2;
-            let numeros = cnpj.substring(0, tamanho);
-            let digitos = cnpj.substring(tamanho);
+            // Validação do primeiro dígito verificador
             let soma = 0;
-            let pos = tamanho - 7;
-
-            for (let i = tamanho; i >= 1; i--) {
-                soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
-                if (pos < 2) pos = 9;
+            let peso = 5;
+            for (let i = 0; i < 12; i++) {
+                soma += parseInt(cnpj.charAt(i)) * peso;
+                peso = peso == 2 ? 9 : peso - 1;
             }
+            let resto = soma % 11;
+            let dv1 = resto < 2 ? 0 : 11 - resto;
+            
+            if (parseInt(cnpj.charAt(12)) !== dv1) return false;
 
-            let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
-            if (resultado !== parseInt(digitos.charAt(0))) return false;
-
-            tamanho = tamanho + 1;
-            numeros = cnpj.substring(0, tamanho);
+            // Validação do segundo dígito verificador
             soma = 0;
-            pos = tamanho - 7;
-
-            for (let i = tamanho; i >= 1; i--) {
-                soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
-                if (pos < 2) pos = 9;
+            peso = 6;
+            for (let i = 0; i < 13; i++) {
+                soma += parseInt(cnpj.charAt(i)) * peso;
+                peso = peso == 2 ? 9 : peso - 1;
             }
+            resto = soma % 11;
+            let dv2 = resto < 2 ? 0 : 11 - resto;
+            
+            return parseInt(cnpj.charAt(13)) === dv2;
+        }
 
-            resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
-            if (resultado !== parseInt(digitos.charAt(1))) return false;
-
-            return true;
+        // Buscar endereço por CEP via API ViaCEP
+        async function buscarEnderecoPorCEP(cep) {
+            try {
+                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const data = await response.json();
+                
+                if (!data.erro) {
+                    document.getElementById('logradouro').value = data.logradouro || '';
+                    document.getElementById('bairro').value = data.bairro || '';
+                    document.getElementById('cidade').value = data.localidade || '';
+                    document.getElementById('estado').value = data.uf || '';
+                    
+                    // Focar no campo número se o endereço foi preenchido
+                    if (data.logradouro) {
+                        document.getElementById('numero').focus();
+                    }
+                }
+            } catch (error) {
+                console.log('Erro ao buscar CEP:', error);
+            }
         }
 
         // Validação do formulário
@@ -924,6 +1204,7 @@ function isActivePage($page)
             const nomeEmpresa = document.getElementById('nome_empresa').value.trim();
             const nomeRepresentante = document.getElementById('nome_representante').value.trim();
             const email = document.getElementById('email_representante').value.trim();
+            const cep = document.getElementById('cep').value.trim();
 
             // Validar CNPJ
             if (!validarCNPJ(cnpj)) {
@@ -956,6 +1237,14 @@ function isActivePage($page)
                 return;
             }
 
+            // Validar CEP se preenchido
+            if (cep && !isValidCEP(cep)) {
+                e.preventDefault();
+                alert('CEP inválido. Use o formato 00000-000.');
+                document.getElementById('cep').focus();
+                return;
+            }
+
             // Confirmação antes de enviar
             if (!confirm('Confirma o cadastro do fornecedor?')) {
                 e.preventDefault();
@@ -969,8 +1258,14 @@ function isActivePage($page)
             return emailRegex.test(email);
         }
 
+        // Função para validar CEP
+        function isValidCEP(cep) {
+            const cepRegex = /^\d{5}-?\d{3}$/;
+            return cepRegex.test(cep);
+        }
+
         // Feedback visual nos campos
-        const inputs = document.querySelectorAll('.form-input, .form-textarea');
+        const inputs = document.querySelectorAll('.form-input, select');
         inputs.forEach(input => {
             input.addEventListener('focus', function() {
                 this.parentElement.style.transform = 'scale(1.02)';
@@ -1004,39 +1299,17 @@ function isActivePage($page)
             this.value = this.value.replace(/\b\w/g, l => l.toUpperCase());
         });
 
-        // Limitar caracteres em campos específicos
-        document.getElementById('atividade').addEventListener('input', function() {
-            if (this.value.length > 100) {
-                this.value = this.value.substring(0, 100);
-            }
+        document.getElementById('logradouro').addEventListener('blur', function() {
+            this.value = this.value.replace(/\b\w/g, l => l.toUpperCase());
         });
 
-        // Mostrar contador de caracteres para textarea
-        const endereco = document.getElementById('endereco');
-        const enderecoWrapper = endereco.parentElement;
-
-        const charCounter = document.createElement('div');
-        charCounter.style.cssText = `
-            font-size: 0.75rem;
-            color: #64748b;
-            margin-top: 4px;
-            text-align: right;
-        `;
-
-        endereco.addEventListener('input', function() {
-            const remaining = 500 - this.value.length;
-            charCounter.textContent = `${this.value.length}/500 caracteres`;
-
-            if (remaining < 50) {
-                charCounter.style.color = '#ef4444';
-            } else if (remaining < 100) {
-                charCounter.style.color = '#f59e0b';
-            } else {
-                charCounter.style.color = '#64748b';
-            }
+        document.getElementById('bairro').addEventListener('blur', function() {
+            this.value = this.value.replace(/\b\w/g, l => l.toUpperCase());
         });
 
-        enderecoWrapper.appendChild(charCounter);
+        document.getElementById('cidade').addEventListener('blur', function() {
+            this.value = this.value.replace(/\b\w/g, l => l.toUpperCase());
+        });
 
         // Animação de sucesso no envio
         if (document.querySelector('.alert-success')) {
@@ -1045,7 +1318,7 @@ function isActivePage($page)
                 if (alert) {
                     alert.style.animation = 'slideUp 0.5s ease-out forwards';
                 }
-            }, 3000);
+            }, 5000);
         }
 
         // CSS adicional para animações
@@ -1060,15 +1333,6 @@ function isActivePage($page)
                     opacity: 0;
                     transform: translateY(-20px);
                 }
-            }
-            
-            .form-input:invalid:not(:focus) {
-                border-color: #ef4444;
-                background-color: #fef2f2;
-            }
-            
-            .form-input:valid:not(:focus):not([value=""]) {
-                border-color: #10b981;
             }
         `;
         document.head.appendChild(style);
