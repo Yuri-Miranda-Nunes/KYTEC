@@ -1,6 +1,7 @@
 <?php
 class BancoDeDados {
     private $host = "mysql.railway.internal";
+    private $port = "3306";
     private $dbname = "railway";
     private $usuario = "root";
     private $senha = "yAIrUScHfWtuioDPCVWLrEzuLjcTHKBK";
@@ -9,7 +10,7 @@ class BancoDeDados {
     public function __construct() {
         try {
             $this->pdo = new PDO(
-                "mysql:host={$this->host};dbname={$this->dbname}",
+                "mysql:host={$this->host};port={$this->port};dbname={$this->dbname}",
                 $this->usuario,
                 $this->senha,
                 array(PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8")
