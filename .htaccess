@@ -1,0 +1,3 @@
+<Files "config.local.php">
+    Require all denied
+</Files>
