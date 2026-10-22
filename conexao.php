@@ -9,11 +9,11 @@ class BancoDeDados {
             throw new RuntimeException('A configuração local do banco de dados deve retornar um array.');
         }
 
-        $host = getenv('DB_HOST') ?: ($localConfig['host'] ?? 'sql300.infinityfree.com');
+        $host = getenv('DB_HOST') ?: ($localConfig['host'] ?? '');
         $port = getenv('DB_PORT') ?: ($localConfig['port'] ?? '3306');
-        $dbname = getenv('DB_NAME') ?: ($localConfig['dbname'] ?? 'if0_43248188_euro_banco');
-        $usuario = getenv('DB_USER') ?: ($localConfig['user'] ?? 'if0_43248188');
-        $senha = getenv('DB_PASSWORD') ?: ($localConfig['password'] ?? 'gFxNVJDmxalH9');
+        $dbname = getenv('DB_NAME') ?: ($localConfig['dbname'] ?? '');
+        $usuario = getenv('DB_USER') ?: ($localConfig['user'] ?? '');
+        $senha = getenv('DB_PASSWORD') ?: ($localConfig['password'] ?? '');
 
         foreach ([
             'DB_HOST' => $host,
