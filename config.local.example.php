@@ -1,8 +1,8 @@
 <?php
 return [
-    'host' => 'database-host-from-your-hosting-panel',
+    'host' => 'database-host-from-infinityfree-panel',
     'port' => '3306',
-    'dbname' => 'database-name',
-    'user' => 'database-user',
-    'password' => 'replace-with-a-private-password',
+    'dbname' => 'database-name-from-infinityfree-panel',
+    'user' => 'database-user-from-infinityfree-panel',
+    'password' => 'database-password-from-infinityfree-panel',
 ];

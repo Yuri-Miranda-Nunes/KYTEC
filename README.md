@@ -157,11 +157,14 @@ O GitHub armazena o código, mas não executa PHP. Este repositório já possui 
 
 ### Preparar a hospedagem
 
-1. Troque as credenciais de FTP e do banco de dados que já foram incluídas no histórico do Git. Remover valores do código atual não invalida versões antigas.
-2. No painel da hospedagem PHP, crie um banco MySQL novo e importe `database/demo.sql`. Esse arquivo contém estrutura e somente registros sintéticos; não importe o dump original, que pode conter dados pessoais.
-3. Em **Settings > Secrets and variables > Actions** no GitHub, crie `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD` com os novos dados da hospedagem. Não coloque os valores no repositório.
-4. Confira se `server-dir` em `.github/workflows/main.yml` corresponde à pasta pública do provedor. O fluxo gera `config.local.php` apenas durante o deploy e publica a aplicação por FTP quando há push para `main`.
-5. Envie as alterações para `main` e acompanhe **Actions** no GitHub. A URL pública depende do domínio criado pelo provedor de hospedagem.
+1. Crie uma conta de hospedagem PHP no InfinityFree e adicione um domínio ou subdomínio. Anote o endereço do site exibido no painel.
+2. No painel do InfinityFree, abra **FTP Accounts** e copie o servidor, usuário e senha FTP. O workflow usa a porta `21` e publica em `/htdocs/`; confirme no cliente FTP do próprio painel que essa é a pasta pública da conta.
+3. No painel, crie uma base em **MySQL Databases**. Copie o hostname, nome completo do banco, usuário e senha exatamente como aparecem ali. Abra o phpMyAdmin pelo painel e importe `database/demo.sql` para essa base vazia. Esse dump contém apenas registros sintéticos; não importe seu dump pessoal.
+4. Em **Settings > Secrets and variables > Actions** no GitHub, crie os segredos `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD`. Para o banco, use os valores do painel do InfinityFree e a porta indicada pelo provedor (normalmente `3306`). O endereço do servidor MySQL é o exibido no painel, não `localhost`.
+5. O MySQL do InfinityFree deve ser acessado pela aplicação hospedada; não tente conectar diretamente ao banco pelo seu computador ou pelo GitHub Actions. O workflow apenas grava as credenciais nos arquivos privados durante a publicação por FTP.
+6. Confira se `/htdocs/` é a pasta pública correta para seu domínio. Envie as alterações para `main` e acompanhe **Actions** no GitHub. Quando o deploy terminar, abra o domínio criado no passo 1.
+
+Troque as credenciais de FTP e do banco que já foram incluídas no histórico do Git. Apagar valores dos arquivos atuais não remove versões antigas. Nunca adicione os novos valores a arquivos versionados ou mensagens públicas.
 
 ### Acesso de demonstração
 
