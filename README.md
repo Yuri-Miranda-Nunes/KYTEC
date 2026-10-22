@@ -148,3 +148,24 @@ Este documento descreve os requisitos funcionais e não funcionais do projeto, c
 
 - **RNF10: Conformidade com Privacidade de Dados**  
   O sistema deve estar em conformidade com as leis de privacidade de dados aplicáveis.
+
+---
+
+## Demonstração online
+
+O GitHub armazena o código, mas não executa PHP. Este repositório já possui um fluxo de publicação por FTP para uma hospedagem PHP; após configurar os segredos do GitHub, cada envio para `main` publica os arquivos da aplicação.
+
+### Preparar a hospedagem
+
+1. Troque as credenciais de FTP e do banco de dados que já foram incluídas no histórico do Git. Remover valores do código atual não invalida versões antigas.
+2. No painel da hospedagem PHP, crie um banco MySQL novo e importe `database/demo.sql`. Esse arquivo contém estrutura e somente registros sintéticos; não importe o dump original, que pode conter dados pessoais.
+3. Em **Settings > Secrets and variables > Actions** no GitHub, crie `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD` com os novos dados da hospedagem. Não coloque os valores no repositório.
+4. Confira se `server-dir` em `.github/workflows/main.yml` corresponde à pasta pública do provedor. O fluxo gera `config.local.php` apenas durante o deploy e publica a aplicação por FTP quando há push para `main`.
+5. Envie as alterações para `main` e acompanhe **Actions** no GitHub. A URL pública depende do domínio criado pelo provedor de hospedagem.
+
+### Acesso de demonstração
+
+- **E-mail:** `demo@kytec.local`
+- **Senha:** `KYTEC-Demo-Estoque-2026!`
+
+Essa conta tem permissões administrativas para que visitantes experimentem cadastros e movimentações. Use-a exclusivamente com o banco isolado e fictício de `database/demo.sql`; todos os visitantes compartilham e podem alterar os mesmos dados. Se recriar o banco, a conta e a senha serão restauradas para esses valores públicos. Não reutilize essa senha em nenhum outro serviço.

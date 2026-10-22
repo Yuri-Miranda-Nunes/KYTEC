@@ -46,35 +46,7 @@ try {
         $filtros['produto_id'] = (int)$_GET['produto_id'];
     }
 
-    // Debug: vamos testar a query diretamente primeiro
-    $debug_query = "SELECT 
-        m.*,
-        DATE_FORMAT(m.criado_em, '%d/%m/%Y %H:%i:%s') as data_hora,
-        p.nome as produto_nome,
-        p.codigo as produto_codigo,
-        u.nome as usuario_nome
-    FROM movimentacoes_estoque m
-    LEFT JOIN produtos p ON m.produto_id = p.id_produto
-    LEFT JOIN usuarios u ON m.usuario_id = u.id
-    ORDER BY m.criado_em DESC 
-    LIMIT 10";
-
-    $debug_stmt = $pdo->prepare($debug_query);
-    $debug_stmt->execute();
-    $debug_movimentacoes = $debug_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Agora buscar usando o LogManager
     $movimentacoes = $logManager->buscarMovimentacoesEstoque($filtros, $registros_por_pagina, $offset);
-
-    // Log de debug
-    error_log("Debug - Registros direto do banco: " . count($debug_movimentacoes));
-    error_log("Debug - Registros via LogManager: " . count($movimentacoes));
-    if (!empty($debug_movimentacoes)) {
-        error_log("Debug - Primeira movimentação direta: " . json_encode($debug_movimentacoes[0]));
-    }
-    if (!empty($movimentacoes)) {
-        error_log("Debug - Primeira movimentação LogManager: " . json_encode($movimentacoes[0]));
-    }
 
     // Contagem total para paginação
     $sql_count = "SELECT COUNT(*) FROM movimentacoes_estoque m WHERE 1=1";
@@ -1154,7 +1126,6 @@ function isActivePage($page)
             <!-- Rodapé com informações adicionais -->
             <div style="text-align: center; color: #94a3b8; font-size: 0.8rem; margin-top: 40px; padding: 20px;">
                 <p>Sistema de Controle de Estoque - KYTEC</p>
-                <p>Para problemas técnicos, adicione <code>?debug=1</code> na URL para ver informações de debug</p>
             </div>
         </main>
     </div>

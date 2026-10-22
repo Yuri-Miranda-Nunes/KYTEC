@@ -56,16 +56,6 @@ if (!empty($_SESSION['logado']) && $_SESSION['logado'] === true) {
       border-radius: 4px;
       margin-bottom: 15px;
     }
-    .debug-link {
-      font-size: 0.8rem;
-      color: #666;
-      text-align: center;
-      margin-top: 10px;
-    }
-    .debug-link a {
-      color: #666;
-      text-decoration: none;
-    }
   </style>
 </head>
 <body>
@@ -84,13 +74,6 @@ if (!empty($_SESSION['logado']) && $_SESSION['logado'] === true) {
       <input type="password" name="senha" placeholder="Senha" required>
       <button type="submit">Entrar</button>
     </form>
-    
-    <!-- Link para debug (remova em produção) -->
-    <div class="debug-link">
-      <a href="class/verifica_login.php?debug=1" onclick="return confirm('Modo debug ativado. Continuar?')">
-        Debug Mode
-      </a>
-    </div>
   </div>
 </body>
 </html>

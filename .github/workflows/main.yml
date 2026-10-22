@@ -10,11 +10,45 @@ jobs:
     steps:
     - name: 🚚 Get latest code
       uses: actions/checkout@v4
+
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+
+    - name: Generate private database configuration
+      env:
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      run: |
+        php -r '
+        $config = [
+            "host" => getenv("DB_HOST"),
+            "port" => getenv("DB_PORT") ?: "3306",
+            "dbname" => getenv("DB_NAME"),
+            "user" => getenv("DB_USER"),
+            "password" => getenv("DB_PASSWORD"),
+        ];
+        foreach ($config as $key => $value) {
+            if ($value === false || $value === "") {
+                fwrite(STDERR, "Missing database secret for {$key}\n");
+                exit(1);
+            }
+        }
+        file_put_contents("config.local.php", "<?php\nreturn " . var_export($config, true) . ";\n");
+        '
     
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
-        server: ftpupload.net
-        username: if0_39533103
-        password: 7uZMTnbzCohtJq
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
         server-dir: /htdocs/
+        exclude: |
+          **/.git*
+          **/.git*/**
+          database/**

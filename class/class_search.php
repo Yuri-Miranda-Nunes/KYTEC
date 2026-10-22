@@ -274,19 +274,12 @@ try {
     echo json_encode([
         'results' => $resultados,
         'total' => count($resultados),
-        'query' => $termo,
-        'debug_info' => [
-            'referer' => $_SERVER['HTTP_REFERER'] ?? 'not_set',
-            'url_prefix' => $urlPrefix,
-            'from_param' => $_GET['from'] ?? 'not_set',
-            'script_path' => __FILE__,
-            'working_directory' => getcwd()
-        ]
+        'query' => $termo
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
     error_log("Erro na pesquisa: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['error' => 'Erro interno do servidor: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['error' => 'Erro interno do servidor.'], JSON_UNESCAPED_UNICODE);
 }
 ?>
