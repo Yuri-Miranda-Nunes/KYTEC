@@ -222,9 +222,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $bd = new BancoDeDados();
     $perfil = new PerfilUsuario($bd->pdo);
     $userId = $_SESSION['usuario_id'];
+    $isDemoAccount = ($_SESSION['usuario_email'] ?? '') === 'demo@kytec.local';
 
     switch ($_POST['action']) {
         case 'update_personal':
+            if ($isDemoAccount) {
+                echo json_encode(['success' => false, 'message' => 'O perfil da conta compartilhada de demonstração não pode ser alterado.']);
+                break;
+            }
+
             $dados = [
                 'nome' => $_POST['nome'] ?? '',
                 'matricula' => $_POST['matricula'] ?? '',
@@ -243,6 +249,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             break;
 
         case 'change_password':
+            if ($isDemoAccount) {
+                echo json_encode(['success' => false, 'message' => 'A senha da conta compartilhada de demonstração não pode ser alterada.']);
+                break;
+            }
+
             $senhaAtual = $_POST['current_password'] ?? '';
             $novaSenha = $_POST['new_password'] ?? '';
             $confirmarSenha = $_POST['confirm_password'] ?? '';

@@ -56,11 +56,36 @@ if (!empty($_SESSION['logado']) && $_SESSION['logado'] === true) {
       border-radius: 4px;
       margin-bottom: 15px;
     }
+    .demo-info {
+      margin: 20px 0;
+      padding: 14px;
+      border: 1px solid #cfe2ff;
+      border-radius: 6px;
+      background: #eef6ff;
+      color: #193b63;
+      font-size: .9rem;
+      line-height: 1.6;
+    }
+    .demo-info p {
+      margin: 0 0 8px;
+    }
+    .demo-info p:last-child {
+      margin-bottom: 0;
+    }
+    .demo-info code {
+      overflow-wrap: anywhere;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Login - Sistema de Estoque</h2>
+
+    <div class="demo-info">
+      <p><strong>Demonstração para recrutadores</strong></p>
+      <p>E-mail: <code>demo@kytec.local</code><br>Senha: <code>KYTEC-Demo-Estoque-2026!</code></p>
+      <p>Use apenas os dados fictícios. As alterações são compartilhadas com outros visitantes.</p>
+    </div>
 
     <?php if (!empty($_SESSION['erro'])): ?>
       <div class="erro">
