@@ -43,11 +43,10 @@ try {
         header("Location: ../read/read_user.php?erro=usuario_nao_encontrado");
         exit;
     }
-    
-   
-    
-    // Se foi confirmada a exclusão
-    if (isset($_POST['confirmar_exclusao']) && $_POST['confirmar_exclusao'] === 'sim') {
+
+    if ($usuario['email'] === 'demo@kytec.local') {
+        $erro_geral = "A conta compartilhada de demonstração não pode ser excluída.";
+    } elseif (isset($_POST['confirmar_exclusao']) && $_POST['confirmar_exclusao'] === 'sim') {
         $bd->pdo->beginTransaction();
         
         try {

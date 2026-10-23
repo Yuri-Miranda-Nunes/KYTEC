@@ -19,7 +19,7 @@ function temPermissao($permissao)
 }
 
 require_once '../conexao.php';
-require_once '../log\log_manager.php';
+require_once '../log/log_manager.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {

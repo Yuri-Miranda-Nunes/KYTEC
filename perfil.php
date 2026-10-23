@@ -227,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     switch ($_POST['action']) {
         case 'update_personal':
             if ($isDemoAccount) {
-                echo json_encode(['success' => false, 'message' => 'O perfil da conta compartilhada de demonstração não pode ser alterado.']);
+                echo json_encode(['success' => false, 'message' => 'Os dados da conta compartilhada de demonstração não podem ser alterados.']);
                 break;
             }
 

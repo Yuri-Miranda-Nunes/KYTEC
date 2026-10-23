@@ -198,13 +198,14 @@ INSERT INTO `permissoes` (`id`, `nome_permissao`) VALUES
 (5, 'gerenciar_usuarios');
 
 INSERT INTO `usuarios` (`id`, `matricula`, `nome`, `email`, `departamento`, `cargo`, `senha`, `perfil`, `ativo`) VALUES
-(1, 9001, 'Conta de demonstração', 'demo@kytec.local', 'Demonstração', 'Estoquista de demonstração', '$2y$12$8uuRUfF59XZGQRF6Kwif..67LtTdtUaqI3K/SoUXroviS5nZms4OG', 'estoquista', 1);
+(1, 9001, 'Conta de demonstração', 'demo@kytec.local', 'Demonstração', 'Administrador de demonstração', '$2y$12$8uuRUfF59XZGQRF6Kwif..67LtTdtUaqI3K/SoUXroviS5nZms4OG', 'admin', 1);
 
 INSERT INTO `usuario_permissoes` (`usuario_id`, `permissao_id`) VALUES
 (1, 1),
 (1, 2),
 (1, 3),
-(1, 4);
+(1, 4),
+(1, 5);
 
 INSERT INTO `fornecedores` (`id_fornecedor`, `nome_empresa`, `atividade`, `nome_representante`, `email_representante`, `cidade`, `estado`) VALUES
 (1, 'Fornecedor Fictício de Madeira', 'Materiais para marcenaria', 'Pessoa Exemplo', 'contato@example.invalid', 'Cidade Exemplo', 'SP'),

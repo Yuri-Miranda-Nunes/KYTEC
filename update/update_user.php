@@ -56,6 +56,12 @@ try {
     header("Location: ../read/read_user.php");
     exit;
   }
+
+  if ($usuario['email'] === 'demo@kytec.local') {
+    $_SESSION['mensagem_erro'] = "A conta compartilhada de demonstração não pode ser alterada.";
+    header("Location: ../read/read_user.php");
+    exit;
+  }
 } catch (Exception $e) {
   $_SESSION['mensagem_erro'] = "Erro ao buscar usuário: " . $e->getMessage();
   header("Location: ../read/read_user.php");
