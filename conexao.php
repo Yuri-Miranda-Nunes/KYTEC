@@ -8,7 +8,7 @@ class BancoDeDados {
         if (!is_array($localConfig)) {
             throw new RuntimeException('A configuração local do banco de dados deve retornar um array.');
         }
-
+// teste
         $host = getenv('DB_HOST') ?: ($localConfig['host'] ?? '');
         $port = getenv('DB_PORT') ?: ($localConfig['port'] ?? '3306');
         $dbname = getenv('DB_NAME') ?: ($localConfig['dbname'] ?? '');
